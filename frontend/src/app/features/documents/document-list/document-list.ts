@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
-import { DocumentSummary, MetadataInput, Tag } from '../../../core/models';
+import { DocumentSummary, MetadataInput, PhysicalBox, Tag } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
 import { DocumentViewer } from '../document-viewer/document-viewer';
 import { EmptyState } from '../../../shared/empty-state/empty-state';
@@ -108,6 +108,13 @@ export class DocumentList {
   protected readonly tagOpError = signal<string | null>(null);
   /** Tag chosen in a document's "Add a tag" dropdown, per document id. */
   protected readonly chosenTag: Record<string, string> = {};
+  /** Phase 7 physical archive: workspace boxes, for filing a document. */
+  protected readonly physicalBoxes = signal<PhysicalBox[]>([]);
+  /** Phase 7: document being filed in / removed from a box. */
+  protected readonly boxingId = signal<string | null>(null);
+  protected readonly boxOpError = signal<string | null>(null);
+  /** Box chosen in a document's "File in a box" dropdown, per document id. */
+  protected readonly chosenBox: Record<string, string> = {};
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -123,9 +130,11 @@ export class DocumentList {
       if (workspaceId) {
         this.load(workspaceId);
         this.loadTags(workspaceId);
+        this.loadPhysicalBoxes(workspaceId);
       } else {
         this.documents.set([]);
         this.tags.set([]);
+        this.physicalBoxes.set([]);
         this.selectedTagId.set(null);
         this.error.set(null);
       }
@@ -425,6 +434,60 @@ export class DocumentList {
         d.id === documentId ? { ...d, tags } : d,
       ),
     );
+  }
+
+  /** Phase 7 physical archive: load the workspace's boxes. */
+  private loadPhysicalBoxes(workspaceId: string): void {
+    this.api.getPhysicalBoxes(workspaceId).subscribe({
+      next: (boxes) => this.physicalBoxes.set(boxes),
+      error: () => this.physicalBoxes.set([]),
+    });
+  }
+
+  protected onBoxChosen(doc: DocumentSummary, event: Event): void {
+    this.chosenBox[doc.id] = (event.target as HTMLSelectElement).value;
+  }
+
+  /** Phase 7: file the document in the chosen physical box. */
+  protected assignPhysicalBox(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    const boxId = this.chosenBox[doc.id];
+    if (!workspaceId || !boxId || this.boxingId()) return;
+    this.boxingId.set(doc.id);
+    this.boxOpError.set(null);
+    this.api.assignPhysicalBox(workspaceId, doc.id, boxId).subscribe({
+      next: (updated) => {
+        this.boxingId.set(null);
+        delete this.chosenBox[doc.id];
+        this.documents.set(
+          this.documents().map((d) => (d.id === updated.id ? updated : d)),
+        );
+      },
+      error: () => {
+        this.boxingId.set(null);
+        this.boxOpError.set('Could not file the document in the box. Please try again.');
+      },
+    });
+  }
+
+  /** Phase 7: take the document out of its physical box. */
+  protected unassignPhysicalBox(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.boxingId()) return;
+    this.boxingId.set(doc.id);
+    this.boxOpError.set(null);
+    this.api.unassignPhysicalBox(workspaceId, doc.id).subscribe({
+      next: (updated) => {
+        this.boxingId.set(null);
+        this.documents.set(
+          this.documents().map((d) => (d.id === updated.id ? updated : d)),
+        );
+      },
+      error: () => {
+        this.boxingId.set(null);
+        this.boxOpError.set('Could not remove the document from the box. Please try again.');
+      },
+    });
   }
 
   /** Phase 3: search the workspace's documents (file name, vendor, OCR text). */

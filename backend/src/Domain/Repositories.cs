@@ -44,6 +44,23 @@ public interface ITagRepository
     Task<List<Tag>> ListTagsForDocumentAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Persistence for physical boxes (always scoped to a workspace) and their document contents.</summary>
+public interface IPhysicalBoxRepository
+{
+    Task<PhysicalBox> AddAsync(PhysicalBox box, CancellationToken cancellationToken = default);
+    Task<PhysicalBox?> GetByIdAsync(Guid workspaceId, Guid boxId, CancellationToken cancellationToken = default);
+    /// <summary>Case-insensitive name lookup (for duplicate detection).</summary>
+    Task<PhysicalBox?> GetByNameAsync(Guid workspaceId, string name, CancellationToken cancellationToken = default);
+    /// <summary>Lookup by the printed label code (globally unique).</summary>
+    Task<PhysicalBox?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+    /// <summary>All boxes in the workspace, in name order.</summary>
+    Task<List<PhysicalBox>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    /// <summary>How many documents sit in this box (for the list view).</summary>
+    Task<int> CountDocumentsAsync(Guid workspaceId, Guid boxId, CancellationToken cancellationToken = default);
+    Task UpdateAsync(PhysicalBox box, CancellationToken cancellationToken = default);
+    Task DeleteAsync(PhysicalBox box, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Persistence for filing rules (always scoped to a workspace).</summary>
 public interface IFilingRuleRepository
 {
@@ -57,6 +74,21 @@ public interface IFilingRuleRepository
     Task DeleteAsync(FilingRule rule, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Phase 5 search criteria. Every field is optional, but a search needs
+/// at least one of them (the service enforces that). <c>Category</c> matches the
+/// effective category (human-confirmed wins over the suggestion). <c>From</c> /
+/// <c>To</c> are inclusive dates on the extracted document date.</summary>
+public record DocumentSearchCriteria(
+    string? Query,
+    string? Category,
+    string? Vendor,
+    DateTime? From,
+    DateTime? To,
+    Guid? TagId,
+    Guid? ArchiveId,
+    bool? NeedsReview,
+    DocumentStatus? Status);
+
 /// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support; Phase 3 adds OCR claim/update.</summary>
 public interface IDocumentRepository
 {
@@ -65,7 +97,14 @@ public interface IDocumentRepository
     /// <summary>Finds a document in this workspace with the given SHA-256 hash (duplicate detection).</summary>
     Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken cancellationToken = default);
     Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default, string? search = null, bool? needsReview = null, Guid? tagId = null);
+    /// <summary>Phase 5 search: free-text match plus filters, newest first. The
+    /// free-text match is provider-aware — PostgreSQL full-text search
+    /// (<c>to_tsvector</c> / <c>plainto_tsquery</c>) when the provider is Postgres,
+    /// LIKE matching on SQLite.</summary>
+    Task<List<Document>> SearchAsync(Guid workspaceId, DocumentSearchCriteria criteria, CancellationToken cancellationToken = default);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    /// <summary>Documents sitting in one physical box (Phase 7), newest first. Tags are loaded with them, like the list endpoint.</summary>
+    Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken cancellationToken = default);
     /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>
     Task UpdateAsync(Document document, CancellationToken cancellationToken = default);
     /// <summary>

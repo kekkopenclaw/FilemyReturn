@@ -22,6 +22,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<DocumentTag> DocumentTags => Set<DocumentTag>();
     public DbSet<FilingRule> FilingRules => Set<FilingRule>();
+    public DbSet<PhysicalBox> PhysicalBoxes => Set<PhysicalBox>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -87,6 +88,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasOne(r => r.MoveToArchive).WithMany().HasForeignKey(r => r.MoveToArchiveId).OnDelete(DeleteBehavior.SetNull);
         });
 
+        modelBuilder.Entity<PhysicalBox>(e =>
+        {
+            e.HasKey(b => b.Id);
+            e.Property(b => b.Name).IsRequired().HasMaxLength(100);
+            e.Property(b => b.Code).IsRequired().HasMaxLength(16);
+            e.Property(b => b.Location).IsRequired().HasMaxLength(200);
+            e.Property(b => b.Description).HasMaxLength(1000);
+            e.HasIndex(b => b.WorkspaceId);
+            // Exact-duplicate guard (case-sensitive in both providers); the service
+            // enforces case-insensitive uniqueness before insert, this catches races.
+            e.HasIndex(b => new { b.WorkspaceId, b.Name }).IsUnique();
+            // Label codes are globally unique — the QR deep link resolves by code.
+            e.HasIndex(b => b.Code).IsUnique();
+            e.HasOne(b => b.Workspace).WithMany(w => w.PhysicalBoxes).HasForeignKey(b => b.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<DocumentTag>(e =>
         {
             // Composite key: the same tag cannot be assigned to the same document twice.
@@ -122,10 +139,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(d => d.OcrStatus); // the OCR worker polls for Queued documents.
             e.HasIndex(d => d.WorkspaceId);
             e.HasIndex(d => d.ArchiveId);
+            e.HasIndex(d => d.PhysicalBoxId); // the box detail view lists its documents.
             e.HasIndex(d => d.CreatedAt);
             e.HasIndex(d => new { d.WorkspaceId, d.Sha256Hash }).IsUnique();
             e.HasOne(d => d.Workspace).WithMany(w => w.Documents).HasForeignKey(d => d.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(d => d.Archive).WithMany(a => a.Documents).HasForeignKey(d => d.ArchiveId).OnDelete(DeleteBehavior.SetNull);
+            // Deleting a box never deletes its documents — they just lose their physical home.
+            e.HasOne(d => d.PhysicalBox).WithMany(b => b.Documents).HasForeignKey(d => d.PhysicalBoxId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<AuditLog>(e =>

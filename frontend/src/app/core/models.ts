@@ -111,6 +111,30 @@ export interface MetadataInput {
   category: string | null;
 }
 
+/**
+ * A physical storage box (Phase 7 physical archive): the real-world home of
+ * paper originals. `code` is the short label code (e.g. "BOX-7K2P9Q") printed
+ * on the box and encoded in its QR code; `documentCount` is how many
+ * documents currently sit in the box.
+ */
+export interface PhysicalBox {
+  id: string;
+  workspaceId: string;
+  name: string;
+  code: string;
+  location: string;
+  description: string | null;
+  documentCount: number;
+  createdAt: string;
+}
+
+/** Payload for creating or updating a physical box. */
+export interface PhysicalBoxInput {
+  name: string;
+  location: string;
+  description: string | null;
+}
+
 /** Backend DocumentStatus enum: Uploaded / Processing / Ready / Failed. */
 export type DocumentStatus =
   | 'Uploaded'
@@ -143,6 +167,9 @@ export interface DocumentSummary {
   confirmedCategory?: string | null;
   // Phase 4 organisation — tags assigned to this document (empty when none).
   tags?: Tag[];
+  // Phase 7 physical archive — the box holding the paper original (null when none).
+  physicalBoxId?: string | null;
+  physicalBoxName?: string | null;
 }
 
 export interface DashboardStats {

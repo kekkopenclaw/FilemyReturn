@@ -30,6 +30,7 @@ All NuGet packages are from nuget.org. Microsoft packages are MIT-licensed
 | Microsoft.NET.Test.Sdk | 18.0.1 | Tests | Test runner |
 | xunit.v3 | 3.2.0 | Tests | Test framework |
 | coverlet.collector | 6.0.4 | Tests | Coverage collection |
+| QRCoder | 1.6.0 | Infrastructure | QR codes for physical boxes (SVG only, no System.Drawing at runtime); MIT licence, verified on nuget.org 2026-11-27 |
 
 No other NuGet packages are referenced. There is no paid telemetry,
 no paid logging service and no cloud OCR SDK.

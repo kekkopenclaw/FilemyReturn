@@ -10,6 +10,8 @@ import {
   FilingRule,
   FilingRuleInput,
   MetadataInput,
+  PhysicalBox,
+  PhysicalBoxInput,
   SearchParams,
   SearchResult,
   Tag,
@@ -315,6 +317,105 @@ export class ApiService {
     return this.http.post<DocumentSummary>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/apply-rules`,
       {},
+    );
+  }
+
+  // -- Physical boxes (Phase 7 physical archive) --------------------------
+
+  /** Lists a workspace's physical boxes, in name order. */
+  getPhysicalBoxes(workspaceId: string): Observable<PhysicalBox[]> {
+    return this.http.get<PhysicalBox[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes`,
+    );
+  }
+
+  /** Finds a box by its printed label code — the QR deep link resolves here. */
+  getPhysicalBoxByCode(
+    workspaceId: string,
+    code: string,
+  ): Observable<PhysicalBox> {
+    return this.http.get<PhysicalBox>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes/by-code/${code}`,
+    );
+  }
+
+  /** Documents sitting in one physical box, newest first. */
+  getPhysicalBoxDocuments(
+    workspaceId: string,
+    boxId: string,
+  ): Observable<DocumentSummary[]> {
+    return this.http.get<DocumentSummary[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes/${boxId}/documents`,
+    );
+  }
+
+  /**
+   * Creates a physical box. 400 on a duplicate name, a missing name or a
+   * missing location. The server generates the printed label code.
+   */
+  createPhysicalBox(
+    workspaceId: string,
+    input: PhysicalBoxInput,
+  ): Observable<PhysicalBox> {
+    return this.http.post<PhysicalBox>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes`,
+      input,
+    );
+  }
+
+  /** Updates a box's name, location or description (the code never changes). */
+  updatePhysicalBox(
+    workspaceId: string,
+    boxId: string,
+    input: PhysicalBoxInput,
+  ): Observable<PhysicalBox> {
+    return this.http.put<PhysicalBox>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes/${boxId}`,
+      input,
+    );
+  }
+
+  /** Deletes a box. Its documents are NOT deleted — they just lose their box. */
+  deletePhysicalBox(workspaceId: string, boxId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes/${boxId}`,
+    );
+  }
+
+  /**
+   * The box's QR code as an SVG document, for printing on the label. Fetched
+   * as text (with the auth token) rather than an `<img>` — the endpoint is
+   * authenticated, and an `<img>` cannot carry the Bearer token.
+   */
+  getPhysicalBoxQr(workspaceId: string, boxId: string): Observable<string> {
+    return this.http.get(
+      `${this.baseUrl}/workspaces/${workspaceId}/boxes/${boxId}/qr`,
+      { responseType: 'text' },
+    );
+  }
+
+  /**
+   * Puts a document in a physical box. Idempotent — assigning the document
+   * to the box it already sits in returns the document unchanged.
+   */
+  assignPhysicalBox(
+    workspaceId: string,
+    documentId: string,
+    boxId: string,
+  ): Observable<DocumentSummary> {
+    return this.http.post<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/physical-box`,
+      { boxId },
+    );
+  }
+
+  /** Takes a document out of its physical box. Idempotent. */
+  unassignPhysicalBox(
+    workspaceId: string,
+    documentId: string,
+  ): Observable<DocumentSummary> {
+    return this.http.delete<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/physical-box`,
     );
   }
 

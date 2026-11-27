@@ -1,0 +1,190 @@
+<h1>Physical boxes</h1>
+<p class="page-intro">
+  @if (workspaceService.selectedWorkspace(); as workspace) {
+    Boxes in <strong>{{ workspace.name }}</strong> are where the paper originals
+    live — a box on a shelf, in a cupboard, in the loft. Every box has a short
+    label code and a QR code: stick the printed label on the box, scan it, and
+    this page opens on that box with its documents.
+  } @else {
+    Select a workspace to see its physical boxes.
+  }
+</p>
+
+@if (workspaceService.workspaces().length === 0 && !workspaceService.loading()) {
+  <app-empty-state
+    message="No workspaces yet"
+    detail="Create a workspace first — physical boxes belong to a workspace."
+  />
+} @else {
+  <section class="create-card" aria-labelledby="box-form-heading">
+    <h2 id="box-form-heading">
+      {{ editingId() ? 'Edit physical box' : 'Create a physical box' }}
+    </h2>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      @if (formError()) {
+        <p class="error-banner" role="alert">{{ formError() }}</p>
+      }
+      @if (formSuccess()) {
+        <p class="success-banner" role="status">{{ formSuccess() }}</p>
+      }
+      <div class="form-row">
+        <div class="field">
+          <label for="box-name">Box name</label>
+          <input
+            id="box-name"
+            type="text"
+            formControlName="name"
+            placeholder="e.g. Tax archive 2025"
+            [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched"
+          />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <p class="field-error">Name is required (up to 100 characters).</p>
+          }
+        </div>
+        <div class="field">
+          <label for="box-location">Location</label>
+          <input
+            id="box-location"
+            type="text"
+            formControlName="location"
+            placeholder="e.g. Shelf B, row 3"
+            [attr.aria-invalid]="form.controls.location.invalid && form.controls.location.touched"
+          />
+          @if (form.controls.location.touched && form.controls.location.invalid) {
+            <p class="field-error">Location is required (up to 200 characters).</p>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label for="box-description">Description (optional)</label>
+        <input
+          id="box-description"
+          type="text"
+          formControlName="description"
+          placeholder="e.g. Receipts and invoices, Jan–Jun"
+        />
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving() || !workspaceService.selectedWorkspaceId()"
+        >
+          {{ saving() ? 'Saving…' : editingId() ? 'Save changes' : 'Create box' }}
+        </button>
+        @if (editingId()) {
+          <button type="button" class="btn" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+    </form>
+  </section>
+
+  @if (loading()) {
+    <app-loading-spinner />
+  } @else if (error()) {
+    <p class="error-banner" role="alert">{{ error() }}</p>
+  } @else if (boxes().length === 0) {
+    <app-empty-state
+      message="No physical boxes yet"
+      detail="Create your first box above — for example, “Tax archive 2025” on “Shelf B, row 3”."
+    />
+  } @else {
+    <ul class="box-list">
+      @for (box of boxes(); track box.id) {
+        <li class="box-row">
+          <div class="box-head">
+            <span class="box-name">{{ box.name }}</span>
+            <code class="box-code">{{ box.code }}</code>
+            <span class="box-meta">{{ documentCountLabel(box) }}</span>
+          </div>
+          <p class="box-location">{{ box.location }}</p>
+          @if (box.description) {
+            <p class="box-meta">{{ box.description }}</p>
+          }
+          <p class="box-meta">Created {{ box.createdAt | date: 'medium' }}</p>
+          <div class="box-actions">
+            <button
+              type="button"
+              class="btn btn-small"
+              (click)="selectBox(box)"
+            >
+              {{ selectedBoxId() === box.id ? 'Hide contents' : 'View contents' }} — {{ box.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-small"
+              (click)="startEdit(box)"
+            >
+              Edit box {{ box.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-small"
+              [disabled]="deletingId() === box.id"
+              (click)="deleteBox(box)"
+            >
+              Delete box {{ box.name }}
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (selectedBox(); as box) {
+    <section class="box-detail" [attr.aria-label]="'Contents of ' + box.name">
+      <div class="box-detail-head">
+        <h2>{{ box.name }}</h2>
+        <button type="button" class="btn btn-small" (click)="closeBox()">Close</button>
+      </div>
+      <dl class="box-detail-meta">
+        <div>
+          <dt>Label code</dt>
+          <dd><code>{{ box.code }}</code></dd>
+        </div>
+        <div>
+          <dt>Location</dt>
+          <dd>{{ box.location }}</dd>
+        </div>
+      </dl>
+
+      <div class="qr-block">
+        <h3>Label QR code</h3>
+        @if (qrError()) {
+          <p class="error-banner" role="alert">{{ qrError() }}</p>
+        } @else if (qrSvg()) {
+          <div class="qr-image" [innerHTML]="qrSvg()"></div>
+          <p class="field-hint">Scan this code to open this box in DocuArchive.</p>
+          <button type="button" class="btn btn-small" (click)="printLabel()">
+            Print label — {{ box.name }}
+          </button>
+        } @else {
+          <app-loading-spinner />
+        }
+      </div>
+
+      <h3>Documents in this box</h3>
+      @if (loadingContents()) {
+        <app-loading-spinner />
+      } @else if (contentsError()) {
+        <p class="error-banner" role="alert">{{ contentsError() }}</p>
+      } @else if (boxDocuments().length === 0) {
+        <app-empty-state
+          message="No documents in this box yet"
+          detail="Assign documents to this box from the Documents page — open a document's details and choose its physical box."
+        />
+      } @else {
+        <ul class="box-documents">
+          @for (doc of boxDocuments(); track doc.id) {
+            <li>
+              <span class="doc-name">{{ doc.originalFileName }}</span>
+              <span class="badge badge-neutral">{{ doc.status }}</span>
+              <span class="box-meta">{{ doc.createdAt | date: 'mediumDate' }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+}

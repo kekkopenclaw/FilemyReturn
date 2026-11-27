@@ -30,6 +30,9 @@ public class Document
     public Workspace? Workspace { get; set; }
     public Guid? ArchiveId { get; set; }
     public Archive? Archive { get; set; }
+    /// <summary>Physical box holding the paper original (Phase 7). Null when the document lives nowhere physical yet. SetNull on box delete — deleting a box never deletes its documents.</summary>
+    public Guid? PhysicalBoxId { get; set; }
+    public PhysicalBox? PhysicalBox { get; set; }
     /// <summary>Tags assigned to this document (Phase 4). Empty when none; null only when the query did not load them.</summary>
     public ICollection<DocumentTag> DocumentTags { get; set; } = new List<DocumentTag>();
 

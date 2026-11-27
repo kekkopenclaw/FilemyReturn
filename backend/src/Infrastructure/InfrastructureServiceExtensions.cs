@@ -4,6 +4,7 @@ using DocuArchive.Infrastructure.Data;
 using DocuArchive.Infrastructure.Email;
 using DocuArchive.Infrastructure.Identity;
 using DocuArchive.Infrastructure.Ocr;
+using DocuArchive.Infrastructure.Qr;
 using DocuArchive.Infrastructure.Services;
 using DocuArchive.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
@@ -56,12 +57,15 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IArchiveRepository, EfArchiveRepository>();
         services.AddScoped<ITagRepository, EfTagRepository>();
         services.AddScoped<IFilingRuleRepository, EfFilingRuleRepository>();
+        services.AddScoped<IPhysicalBoxRepository, EfPhysicalBoxRepository>();
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
         services.AddScoped<IAuditRepository, EfAuditRepository>();
         services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IWorkspaceAccessService, WorkspaceAccessService>();
         services.AddScoped<IDocumentStorage, LocalFileSystemStorage>();
+        // Phase 7 physical archive: QR codes for box labels (QRCoder, MIT, SVG only).
+        services.AddScoped<IQrCodeService, QrCodeService>();
         // Phase 3 OCR: local Tesseract CLI (free, CPU-only, nothing leaves the machine).
         // PaddleOCR stays an unwired stub — see docs/OCR.md for the evaluation.
         services.Configure<OcrSettings>(configuration.GetSection("Ocr"));

@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using DocuArchive.Application;
+using DocuArchive.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -104,6 +105,71 @@ public class FilingRulesController : ControllerBase
     }
 }
 
+/// <summary>Physical-box endpoints, nested under a workspace (Phase 7 physical archive). Thin controller — logic lives in <see cref="PhysicalBoxService"/> (Application).</summary>
+[ApiController]
+[Route("api/workspaces/{workspaceId:guid}/boxes")]
+[Authorize]
+[EnableRateLimiting("default")]
+public class PhysicalBoxesController : ControllerBase
+{
+    private readonly PhysicalBoxService _boxes;
+    private readonly IQrCodeService _qr;
+    public PhysicalBoxesController(PhysicalBoxService boxes, IQrCodeService qr) { _boxes = boxes; _qr = qr; }
+
+    [HttpGet]
+    public async Task<ActionResult<List<PhysicalBoxDto>>> List(Guid workspaceId, CancellationToken ct)
+        => Ok(await _boxes.ListAsync(ControllerUser.Id(this), workspaceId, ct));
+
+    [HttpGet("{boxId:guid}")]
+    public async Task<ActionResult<PhysicalBoxDto>> Get(Guid workspaceId, Guid boxId, CancellationToken ct)
+        => Ok(await _boxes.GetAsync(ControllerUser.Id(this), workspaceId, boxId, ct));
+
+    /// <summary>Finds a box by its printed label code — the QR deep link resolves here.</summary>
+    [HttpGet("by-code/{code}")]
+    public async Task<ActionResult<PhysicalBoxDto>> GetByCode(Guid workspaceId, string code, CancellationToken ct)
+        => Ok(await _boxes.GetByCodeAsync(ControllerUser.Id(this), workspaceId, code, ct));
+
+    /// <summary>Creates a physical box. ReadOnly members cannot create (StandardUser+ required). 400 on a duplicate name or bad location.</summary>
+    [HttpPost]
+    public async Task<ActionResult<PhysicalBoxDto>> Create(Guid workspaceId, [FromBody] CreatePhysicalBoxRequest request, CancellationToken ct)
+    {
+        var box = await _boxes.CreateAsync(ControllerUser.Id(this), workspaceId, request, ct);
+        return CreatedAtAction(nameof(Get), new { workspaceId, boxId = box.Id }, box);
+    }
+
+    /// <summary>Updates a box's name, location or description (the printed code never changes). StandardUser+ required.</summary>
+    [HttpPut("{boxId:guid}")]
+    public async Task<ActionResult<PhysicalBoxDto>> Update(Guid workspaceId, Guid boxId, [FromBody] UpdatePhysicalBoxRequest request, CancellationToken ct)
+        => Ok(await _boxes.UpdateAsync(ControllerUser.Id(this), workspaceId, boxId, request, ct));
+
+    /// <summary>Deletes a box. Its documents are NOT deleted — they just lose their physical home (SetNull). StandardUser+ required.</summary>
+    [HttpDelete("{boxId:guid}")]
+    public async Task<IActionResult> Delete(Guid workspaceId, Guid boxId, CancellationToken ct)
+    {
+        await _boxes.DeleteAsync(ControllerUser.Id(this), workspaceId, boxId, ct);
+        return NoContent();
+    }
+
+    /// <summary>Documents sitting in this box, newest first.</summary>
+    [HttpGet("{boxId:guid}/documents")]
+    public async Task<ActionResult<List<DocumentDto>>> ListDocuments(Guid workspaceId, Guid boxId, CancellationToken ct)
+        => Ok(await _boxes.ListDocumentsAsync(ControllerUser.Id(this), workspaceId, boxId, ct));
+
+    /// <summary>
+    /// The box's QR code as an SVG image, for printing on the label. The payload
+    /// is a deep link to the box (<c>/boxes?box={Code}</c>) built from this
+    /// request's own origin, so it works in every environment. SVG (not a
+    /// bitmap) so the label prints crisply at any size.
+    /// </summary>
+    [HttpGet("{boxId:guid}/qr")]
+    public async Task<IActionResult> Qr(Guid workspaceId, Guid boxId, CancellationToken ct)
+    {
+        var box = await _boxes.GetAsync(ControllerUser.Id(this), workspaceId, boxId, ct);
+        var payload = $"{Request.Scheme}://{Request.Host}/boxes?box={box.Code}";
+        return Content(_qr.RenderSvg(payload), "image/svg+xml");
+    }
+}
+
 /// <summary>Document read/upload/download endpoints (Phase 2 adds upload + download).</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/documents")]
@@ -122,6 +188,29 @@ public class DocumentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, [FromQuery] bool? needsReview, [FromQuery] Guid? tagId, CancellationToken ct)
         => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search, needsReview, tagId));
+
+    /// <summary>Phase 5 search: free text (<c>q</c>) over file name, vendor and
+    /// OCR text plus filters — <c>category</c> (effective: confirmed wins),
+    /// <c>vendor</c>, <c>from</c>/<c>to</c> (inclusive dates on the extracted
+    /// date), <c>tagId</c>, <c>archiveId</c>, <c>needsReview</c>, <c>status</c>.
+    /// At least one criterion is required (400 otherwise). Members only.</summary>
+    [HttpGet("search")]
+    public async Task<ActionResult<List<SearchResultDto>>> Search(
+        Guid workspaceId, [FromQuery] string? q, [FromQuery] string? category,
+        [FromQuery] string? vendor, [FromQuery] DateTime? from, [FromQuery] DateTime? to,
+        [FromQuery] Guid? tagId, [FromQuery] Guid? archiveId, [FromQuery] bool? needsReview,
+        [FromQuery] string? status, [FromServices] DocumentSearchService search, CancellationToken ct)
+    {
+        DocumentStatus? parsedStatus = null;
+        if (status is not null)
+        {
+            if (!Enum.TryParse<DocumentStatus>(status, ignoreCase: true, out var s))
+                throw new ValidationException($"Unknown status '{status}'.");
+            parsedStatus = s;
+        }
+        var criteria = new DocumentSearchCriteria(q, category, vendor, from, to, tagId, archiveId, needsReview, parsedStatus);
+        return Ok(await search.SearchAsync(ControllerUser.Id(this), workspaceId, criteria, ct));
+    }
 
     [HttpGet("{documentId:guid}")]
     public async Task<ActionResult<DocumentDto>> Get(Guid workspaceId, Guid documentId, CancellationToken ct)
@@ -216,6 +305,24 @@ public class DocumentsController : ControllerBase
     [HttpDelete("{documentId:guid}/tags/{tagId:guid}")]
     public async Task<ActionResult<List<TagDto>>> UnassignTag(Guid workspaceId, Guid documentId, Guid tagId, [FromServices] TagService tags, CancellationToken ct)
         => Ok(await tags.UnassignAsync(ControllerUser.Id(this), workspaceId, documentId, tagId, ct));
+
+    /// <summary>
+    /// Puts a document in a physical box (Phase 7). StandardUser+ only.
+    /// Idempotent — assigning the document to the box it already sits in
+    /// returns the document unchanged. Returns 404 when the document or the
+    /// box does not exist in this workspace.
+    /// </summary>
+    [HttpPost("{documentId:guid}/physical-box")]
+    public async Task<ActionResult<DocumentDto>> AssignPhysicalBox(Guid workspaceId, Guid documentId, [FromBody] AssignPhysicalBoxRequest request, [FromServices] PhysicalBoxService boxes, CancellationToken ct)
+        => Ok(await boxes.AssignAsync(ControllerUser.Id(this), workspaceId, documentId, request.BoxId, ct));
+
+    /// <summary>
+    /// Takes a document out of its physical box (Phase 7). StandardUser+ only.
+    /// Idempotent — a document in no box is a no-op.
+    /// </summary>
+    [HttpDelete("{documentId:guid}/physical-box")]
+    public async Task<ActionResult<DocumentDto>> UnassignPhysicalBox(Guid workspaceId, Guid documentId, [FromServices] PhysicalBoxService boxes, CancellationToken ct)
+        => Ok(await boxes.UnassignAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
 
     /// <summary>
     /// Manually runs the workspace's filing rules against one document (Phase 4).

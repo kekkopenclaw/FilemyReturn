@@ -155,6 +155,9 @@ namespace DocuArchive.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("PhysicalBoxId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Sha256Hash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -186,6 +189,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.HasIndex("NeedsReview");
 
                     b.HasIndex("OcrStatus");
+
+                    b.HasIndex("PhysicalBoxId");
 
                     b.HasIndex("WorkspaceId");
 
@@ -273,6 +278,50 @@ namespace DocuArchive.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("FilingRules");
+                });
+
+            modelBuilder.Entity("DocuArchive.Domain.PhysicalBox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId");
+
+                    b.HasIndex("WorkspaceId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("PhysicalBoxes");
                 });
 
             modelBuilder.Entity("DocuArchive.Domain.RefreshToken", b =>
@@ -626,6 +675,11 @@ namespace DocuArchive.Infrastructure.Migrations
                         .HasForeignKey("ArchiveId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("DocuArchive.Domain.PhysicalBox", "PhysicalBox")
+                        .WithMany("Documents")
+                        .HasForeignKey("PhysicalBoxId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
                         .WithMany("Documents")
                         .HasForeignKey("WorkspaceId")
@@ -633,6 +687,8 @@ namespace DocuArchive.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Archive");
+
+                    b.Navigation("PhysicalBox");
 
                     b.Navigation("Workspace");
                 });
@@ -677,6 +733,17 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("AssignTag");
 
                     b.Navigation("MoveToArchive");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("DocuArchive.Domain.PhysicalBox", b =>
+                {
+                    b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
+                        .WithMany("PhysicalBoxes")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Workspace");
                 });
@@ -764,6 +831,11 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("DocumentTags");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.PhysicalBox", b =>
+                {
+                    b.Navigation("Documents");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.Tag", b =>
                 {
                     b.Navigation("DocumentTags");
@@ -778,6 +850,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("FilingRules");
 
                     b.Navigation("Memberships");
+
+                    b.Navigation("PhysicalBoxes");
 
                     b.Navigation("Tags");
                 });

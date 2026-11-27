@@ -10,6 +10,7 @@ import { AuditLog } from './features/audit/audit-log/audit-log';
 import { Dashboard } from './features/dashboard/dashboard';
 import { DocumentList } from './features/documents/document-list/document-list';
 import { FilingRules } from './features/filing-rules/filing-rules';
+import { PhysicalBoxes } from './features/physical-boxes/physical-boxes';
 import { Search } from './features/search/search/search';
 import { WorkspaceList } from './features/workspaces/workspace-list/workspace-list';
 import { AppShell } from './shared/app-shell/app-shell';
@@ -33,6 +34,7 @@ export const routes: Routes = [
       { path: 'search', component: Search },
       { path: 'archives', component: ArchiveList },
       { path: 'filing-rules', component: FilingRules },
+      { path: 'boxes', component: PhysicalBoxes },
       { path: 'audit-logs', component: AuditLog },
     ],
   },

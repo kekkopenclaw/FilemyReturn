@@ -200,6 +200,72 @@ public class EfFilingRuleRepository : IFilingRuleRepository
     }
 }
 
+public class EfPhysicalBoxRepository : IPhysicalBoxRepository
+{
+    private readonly AppDbContext _db;
+    public EfPhysicalBoxRepository(AppDbContext db) => _db = db;
+
+    public async Task<PhysicalBox> AddAsync(PhysicalBox box, CancellationToken ct = default)
+    {
+        _db.PhysicalBoxes.Add(box);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // RACE: two identical box names (or two identical random codes)
+            // passed the pre-check at the same time and the unique index
+            // rejected the second insert. A name duplicate is a 400; a code
+            // collision is retried by the service with a fresh code.
+            if (await GetByNameAsync(box.WorkspaceId, box.Name, ct) is not null) throw new DuplicatePhysicalBoxException(box.Name);
+            if (await GetByCodeAsync(box.Code, ct) is not null) throw new DuplicatePhysicalBoxCodeException();
+            throw;
+        }
+        return box;
+    }
+
+    public Task<PhysicalBox?> GetByIdAsync(Guid workspaceId, Guid boxId, CancellationToken ct = default)
+        => _db.PhysicalBoxes.FirstOrDefaultAsync(b => b.WorkspaceId == workspaceId && b.Id == boxId, ct);
+
+    public Task<PhysicalBox?> GetByNameAsync(Guid workspaceId, string name, CancellationToken ct = default)
+    {
+        var lowered = name.ToLowerInvariant();
+        return _db.PhysicalBoxes.FirstOrDefaultAsync(b => b.WorkspaceId == workspaceId && b.Name.ToLower() == lowered, ct);
+    }
+
+    public Task<PhysicalBox?> GetByCodeAsync(string code, CancellationToken ct = default)
+        => _db.PhysicalBoxes.FirstOrDefaultAsync(b => b.Code == code, ct);
+
+    public Task<List<PhysicalBox>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
+        => _db.PhysicalBoxes.Where(b => b.WorkspaceId == workspaceId).OrderBy(b => b.Name).ToListAsync(ct);
+
+    public Task<int> CountDocumentsAsync(Guid workspaceId, Guid boxId, CancellationToken ct = default)
+        => _db.Documents.CountAsync(d => d.WorkspaceId == workspaceId && d.PhysicalBoxId == boxId, ct);
+
+    public async Task UpdateAsync(PhysicalBox box, CancellationToken ct = default)
+    {
+        _db.PhysicalBoxes.Update(box);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // RACE: a same-named box landed between the check and the save.
+            if (await GetByNameAsync(box.WorkspaceId, box.Name, ct) is { Id: var clashId } && clashId != box.Id)
+                throw new DuplicatePhysicalBoxException(box.Name);
+            throw;
+        }
+    }
+
+    public async Task DeleteAsync(PhysicalBox box, CancellationToken ct = default)
+    {
+        _db.PhysicalBoxes.Remove(box);
+        await _db.SaveChangesAsync(ct);
+    }
+}
+
 public class EfDocumentRepository : IDocumentRepository
 {
     private readonly AppDbContext _db;
@@ -227,6 +293,7 @@ public class EfDocumentRepository : IDocumentRepository
     public Task<Document?> GetByIdAsync(Guid workspaceId, Guid documentId, CancellationToken ct = default)
         => _db.Documents
             .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .Include(d => d.PhysicalBox)
             .FirstOrDefaultAsync(d => d.WorkspaceId == workspaceId && d.Id == documentId, ct);
 
     public Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken ct = default)
@@ -245,24 +312,105 @@ public class EfDocumentRepository : IDocumentRepository
     {
         var query = _db.Documents
             .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .Include(d => d.PhysicalBox)
             .Where(d => d.WorkspaceId == workspaceId);
         if (archiveId.HasValue) query = query.Where(d => d.ArchiveId == archiveId.Value);
         if (tagId.HasValue) query = query.Where(d => d.DocumentTags.Any(dt => dt.TagId == tagId.Value));
         if (needsReview.HasValue) query = query.Where(d => d.NeedsReview == needsReview.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
+            query = ApplyTextSearch(query, search.Trim(), IsPostgres());
+        }
+        return query.OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
+    }
+
+    /// <summary>True when this context talks to PostgreSQL (full-text search
+    /// available); false for SQLite (LIKE matching).</summary>
+    private bool IsPostgres()
+        => _db.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL";
+
+    /// <summary>Free-text match over file name, vendor and OCR text. On
+    /// Postgres it is a real full-text query (<c>to_tsvector('english', file
+    /// name + vendor + OCR text) @@ plainto_tsquery('english', q)</c>) —
+    /// stemming and stop-words included, so "invoices" matches "invoice"
+    /// and "the" matches nothing. On SQLite it is a LIKE match. The text is
+    /// built with <c>?? ""</c> so a null OCR text or vendor cannot null the
+    /// whole vector (Postgres <c>||</c> with NULL yields NULL). Public and
+    /// static so tests can prove the Postgres SQL translation with
+    /// <c>ToQueryString()</c> without a live Postgres server.</summary>
+    public static IQueryable<Document> ApplyTextSearch(IQueryable<Document> query, string search, bool useFullTextSearch)
+    {
+        if (useFullTextSearch)
+        {
+            return query.Where(d => EF.Functions.ToTsVector("english",
+                    (d.OriginalFileName ?? "") + " " + (d.ExtractedVendor ?? "") + " " + (d.OcrText ?? ""))
+                .Matches(EF.Functions.PlainToTsQuery("english", search)));
+        }
+        // Escape LIKE wildcards so the user's text is matched literally.
+        var term = "%" + search.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+        return query.Where(d =>
+            EF.Functions.Like(d.OriginalFileName, term, "\\")
+            || (d.OcrText != null && EF.Functions.Like(d.OcrText, term, "\\"))
+            || (d.ExtractedVendor != null && EF.Functions.Like(d.ExtractedVendor, term, "\\")));
+    }
+
+    /// <summary>Phase 5 search. Filters are ANDed; the free-text match is
+    /// provider-aware: on Postgres it is a real full-text query
+    /// (<c>to_tsvector('english', file name + vendor + OCR text) @@
+    /// plainto_tsquery('english', q)</c>) — stemming and stop-words included,
+    /// so "invoices" matches "invoice" and "the" matches nothing. On SQLite
+    /// it is the same LIKE match as the list endpoint. The text is built with
+    /// <c>?? ""</c> so a null OCR text or vendor cannot null the whole vector
+    /// (Postgres <c>||</c> with NULL yields NULL).</summary>
+    public Task<List<Document>> SearchAsync(Guid workspaceId, DocumentSearchCriteria criteria, CancellationToken ct = default)
+    {
+        var query = _db.Documents
+            .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .Include(d => d.PhysicalBox)
+            .Where(d => d.WorkspaceId == workspaceId);
+        if (criteria.ArchiveId.HasValue) query = query.Where(d => d.ArchiveId == criteria.ArchiveId.Value);
+        if (criteria.TagId.HasValue) query = query.Where(d => d.DocumentTags.Any(dt => dt.TagId == criteria.TagId.Value));
+        if (criteria.NeedsReview.HasValue) query = query.Where(d => d.NeedsReview == criteria.NeedsReview.Value);
+        if (criteria.Status.HasValue) query = query.Where(d => d.Status == criteria.Status.Value);
+        if (!string.IsNullOrWhiteSpace(criteria.Category))
+        {
+            var category = criteria.Category;
+            query = query.Where(d => (d.ConfirmedCategory ?? d.SuggestedCategory) == category);
+        }
+        if (!string.IsNullOrWhiteSpace(criteria.Vendor))
+        {
             // Escape LIKE wildcards so the user's text is matched literally.
-            var term = "%" + search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
-            query = query.Where(d =>
-                EF.Functions.Like(d.OriginalFileName, term, "\\")
-                || (d.OcrText != null && EF.Functions.Like(d.OcrText, term, "\\"))
-                || (d.ExtractedVendor != null && EF.Functions.Like(d.ExtractedVendor, term, "\\")));
+            var term = "%" + criteria.Vendor.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            query = query.Where(d => d.ExtractedVendor != null && EF.Functions.Like(d.ExtractedVendor, term, "\\"));
+        }
+        if (criteria.From.HasValue)
+        {
+            var from = criteria.From.Value.Date;
+            query = query.Where(d => d.ExtractedDate >= from);
+        }
+        if (criteria.To.HasValue)
+        {
+            // `To` is an inclusive date: anything extracted on that day counts.
+            var end = criteria.To.Value.Date.AddDays(1);
+            query = query.Where(d => d.ExtractedDate < end);
+        }
+        if (!string.IsNullOrWhiteSpace(criteria.Query))
+        {
+            query = ApplyTextSearch(query, criteria.Query.Trim(), IsPostgres());
         }
         return query.OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
     }
 
     public Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
         => _db.Documents.CountAsync(d => d.WorkspaceId == workspaceId, ct);
+
+    /// <summary>Documents sitting in one physical box (Phase 7), newest first.</summary>
+    public Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken ct = default)
+        => _db.Documents
+            .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .Include(d => d.PhysicalBox)
+            .Where(d => d.WorkspaceId == workspaceId && d.PhysicalBoxId == boxId)
+            .OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
 
     public async Task UpdateAsync(Document document, CancellationToken ct = default)
     {

@@ -13,6 +13,7 @@ public class Workspace
     public ICollection<Archive> Archives { get; set; } = new List<Archive>();
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<FilingRule> FilingRules { get; set; } = new List<FilingRule>();
+    public ICollection<PhysicalBox> PhysicalBoxes { get; set; } = new List<PhysicalBox>();
     public ICollection<Document> Documents { get; set; } = new List<Document>();
 }
 

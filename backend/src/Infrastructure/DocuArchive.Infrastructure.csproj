@@ -11,6 +11,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <!-- Phase 7 physical archive: QR codes for box labels. QRCoder 1.6.0, MIT, free.
+         Only the SVG path is used (no System.Drawing at runtime); on net10 the
+         net6.0 asset is picked, which declares no dependencies. -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <!-- Security pins (do not remove without checking NuGet audit): override vulnerable transitive versions. -->
     <!-- SQLitePCLRaw.bundle_e_sqlite3 2.1.12 patches GHSA-2m69-gcr7-jv3q / CVE-2025-6965 (EF Core Sqlite pins 2.1.11). Stay on 2.x; 3.x re-cut the packages. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />

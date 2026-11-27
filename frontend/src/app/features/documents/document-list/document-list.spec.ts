@@ -8,6 +8,7 @@ import { ApiService } from '../../../core/api.service';
 import {
   DocumentSummary,
   MetadataInput,
+  PhysicalBox,
   Tag,
   Workspace,
 } from '../../../core/models';
@@ -78,6 +79,26 @@ describe('DocumentList tags', () => {
     ocrText: 'TESCO EXTRA\nTOTAL 47.82',
   };
 
+  /** Phase 7 physical archive: a box the paper original can be filed in. */
+  const boxes: PhysicalBox[] = [
+    {
+      id: 'b1',
+      workspaceId: 'ws-1',
+      name: 'Tax archive 2025',
+      code: 'BOX-7K2P9Q',
+      location: 'Shelf B, row 3',
+      description: null,
+      documentCount: 1,
+      createdAt: '2026-11-27T00:00:00Z',
+    },
+  ];
+
+  const docInBox: DocumentSummary = {
+    ...docWithTag,
+    physicalBoxId: 'b1',
+    physicalBoxName: 'Tax archive 2025',
+  };
+
   let api: {
     getDocuments: ReturnType<typeof vi.fn>;
     getTags: ReturnType<typeof vi.fn>;
@@ -87,6 +108,9 @@ describe('DocumentList tags', () => {
     unassignTag: ReturnType<typeof vi.fn>;
     applyFilingRules: ReturnType<typeof vi.fn>;
     updateDocumentMetadata: ReturnType<typeof vi.fn>;
+    getPhysicalBoxes: ReturnType<typeof vi.fn>;
+    assignPhysicalBox: ReturnType<typeof vi.fn>;
+    unassignPhysicalBox: ReturnType<typeof vi.fn>;
   };
 
   const create = async (
@@ -109,6 +133,13 @@ describe('DocumentList tags', () => {
       assignTag: vi.fn(() => of([tags[0], tags[1]])),
       unassignTag: vi.fn(() => of([])),
       applyFilingRules: vi.fn(() => of({ ...docWithoutTag, tags: [tags[0]] })),
+      getPhysicalBoxes: vi.fn(() => of(boxes)),
+      assignPhysicalBox: vi.fn(() =>
+        of({ ...docWithoutTag, physicalBoxId: 'b1', physicalBoxName: 'Tax archive 2025' }),
+      ),
+      unassignPhysicalBox: vi.fn(() =>
+        of({ ...docWithTag, physicalBoxId: null, physicalBoxName: null }),
+      ),
       updateDocumentMetadata: vi.fn(
         (_: string, docId: string, input: MetadataInput) => {
           const base =
@@ -244,6 +275,43 @@ describe('DocumentList tags', () => {
     fixture.detectChanges();
     expect(api.unassignTag).toHaveBeenCalledWith('ws-1', 'd1', 't1');
     expect(el.querySelectorAll('.doc-tags .tag-chip').length).toBe(0);
+  });
+
+  it('renders the physical box as a chip on the document row', async () => {
+    const { el } = await create([docInBox]);
+    expect(el.textContent).toContain('receipt.png');
+    expect(el.textContent).toContain('Box: Tax archive 2025');
+  });
+
+  it('filing a document in a box from the details panel updates the row chip', async () => {
+    const { fixture, el } = await create([docWithoutTag]);
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    setSelect(el, '#add-box-d2', 'b1');
+    fixture.detectChanges(); // re-evaluate the File button's disabled state
+    const fileButton = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'File in box',
+    ) as HTMLButtonElement;
+    fileButton.click();
+    fixture.detectChanges();
+    expect(api.assignPhysicalBox).toHaveBeenCalledWith('ws-1', 'd2', 'b1');
+    expect(el.querySelectorAll('td.doc-name .tag-chip').length).toBe(1);
+    expect(el.textContent).toContain('Box: Tax archive 2025');
+  });
+
+  it('removing a document from a box clears its chip', async () => {
+    const { fixture, el } = await create([docInBox]);
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const remove = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Remove from box',
+    ) as HTMLButtonElement;
+    expect(remove).not.toBeNull();
+    remove.click();
+    fixture.detectChanges();
+    expect(api.unassignPhysicalBox).toHaveBeenCalledWith('ws-1', 'd1');
+    // The tag chip stays; only the box chip is gone.
+    expect(el.querySelectorAll('td.doc-name .tag-chip').length).toBe(1);
   });
 
   it('deleting a tag removes it from the manager list', async () => {

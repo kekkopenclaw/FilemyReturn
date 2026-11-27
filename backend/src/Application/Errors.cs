@@ -72,6 +72,28 @@ public class DuplicateTagException : ValidationException
 }
 
 /// <summary>
+/// Two identical physical-box names raced past the duplicate pre-check and the
+/// unique index (WorkspaceId, Name) rejected the second insert. That is a
+/// duplicate (400), not a server error.
+/// </summary>
+public class DuplicatePhysicalBoxException : ValidationException
+{
+    public DuplicatePhysicalBoxException(string name)
+        : base($"A physical box named '{name}' already exists in this workspace.") { }
+}
+
+/// <summary>
+/// A generated box code collided with an existing box (the unique index
+/// rejected the insert). The service retries with a fresh code — this is not
+/// a user error, so it never surfaces as a 400.
+/// </summary>
+public class DuplicatePhysicalBoxCodeException : ValidationException
+{
+    public DuplicatePhysicalBoxCodeException()
+        : base("A physical box code collision occurred.") { }
+}
+
+/// <summary>
 /// Two identical filing-rule names raced past the duplicate pre-check and the
 /// unique index (WorkspaceId, Name) rejected the second insert. That is a
 /// duplicate (400), not a server error.

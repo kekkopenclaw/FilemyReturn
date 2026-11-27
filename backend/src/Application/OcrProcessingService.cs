@@ -150,5 +150,7 @@ internal static class DocumentDtos
         // anything that builds a Document without loading it (upload, OCR claim) gets [].
         (d.DocumentTags ?? []).Where(dt => dt.Tag is not null)
             .Select(dt => new TagDto(dt.Tag!.Id, dt.Tag.WorkspaceId, dt.Tag.Name, dt.Tag.Colour ?? TagService.DefaultColour(dt.Tag.Name), dt.Tag.CreatedAt))
-            .OrderBy(t => t.Name).ToList());
+            .OrderBy(t => t.Name).ToList(),
+        // Phase 7 physical archive — the navigation is loaded by the repository's list/get queries.
+        d.PhysicalBoxId, d.PhysicalBox?.Name);
 }

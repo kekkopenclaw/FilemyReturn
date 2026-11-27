@@ -177,6 +177,14 @@
                     }
                   </span>
                 }
+                <!-- Phase 7: the physical box holding the paper original. -->
+                @if (doc.physicalBoxName) {
+                  <span class="doc-tags">
+                    <span class="tag-chip tag-chip-small">
+                      <span>Box: {{ doc.physicalBoxName }}</span>
+                    </span>
+                  </span>
+                }
               </td>
               <td>{{ doc.mimeType }}</td>
               <td>
@@ -369,6 +377,59 @@
                       }
                       @if (tagOpError()) {
                         <p class="error-banner" role="alert">{{ tagOpError() }}</p>
+                      }
+                    </div>
+                    <!-- Phase 7 physical archive: file the paper original in a box.
+                         Outside the OCR branches — boxing works on any
+                         document, even before OCR has run. -->
+                    <div class="doc-tags-box">
+                      <p class="ocr-label">Physical box</p>
+                      @if (doc.physicalBoxName) {
+                        <p>
+                          Filed in box <strong>{{ doc.physicalBoxName }}</strong>
+                          <button
+                            type="button"
+                            class="btn btn-small"
+                            [disabled]="boxingId() === doc.id"
+                            (click)="unassignPhysicalBox(doc)"
+                          >
+                            {{ boxingId() === doc.id ? 'Removing…' : 'Remove from box' }}
+                          </button>
+                        </p>
+                      } @else {
+                        <p class="tag-empty">Not filed in a physical box yet.</p>
+                      }
+                      @if (physicalBoxes().length > 0) {
+                        <label class="tag-add-label" for="add-box-{{ doc.id }}">
+                          {{ doc.physicalBoxId ? 'Move to another box' : 'File in a box' }}
+                          <select
+                            id="add-box-{{ doc.id }}"
+                            (change)="onBoxChosen(doc, $event)"
+                          >
+                            <!-- [selected] on the options, not [value] on the
+                                 select: the select's value is applied before
+                                 its @for options exist, so it would be lost. -->
+                            <option value="" [selected]="!chosenBox[doc.id]">Choose a box…</option>
+                            @for (box of physicalBoxes(); track box.id) {
+                              <option [value]="box.id" [selected]="chosenBox[doc.id] === box.id">
+                                {{ box.name }} ({{ box.code }}) — {{ box.location }}
+                              </option>
+                            }
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          class="btn btn-small"
+                          [disabled]="boxingId() === doc.id || !chosenBox[doc.id]"
+                          (click)="assignPhysicalBox(doc)"
+                        >
+                          {{ boxingId() === doc.id ? 'Filing…' : 'File in box' }}
+                        </button>
+                      } @else {
+                        <p class="tag-empty">No boxes yet — create one on the Boxes page.</p>
+                      }
+                      @if (boxOpError()) {
+                        <p class="error-banner" role="alert">{{ boxOpError() }}</p>
                       }
                     </div>
                     <!-- Phase 4 organisation: edit the extracted metadata.

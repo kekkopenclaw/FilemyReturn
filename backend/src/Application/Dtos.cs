@@ -67,6 +67,27 @@ public record CreateTagRequest(
 public record AssignTagRequest([Required] Guid TagId);
 
 /// <summary>
+/// A physical storage box (Phase 7 physical archive). <c>DocumentCount</c> is
+/// how many documents currently sit in the box.
+/// </summary>
+public record PhysicalBoxDto(
+    Guid Id, Guid WorkspaceId, string Name, string Code, string Location,
+    string? Description, int DocumentCount, DateTime CreatedAt);
+
+public record CreatePhysicalBoxRequest(
+    [Required, MinLength(1), MaxLength(100)] string Name,
+    [Required, MinLength(1), MaxLength(200)] string Location,
+    [MaxLength(1000)] string? Description);
+
+public record UpdatePhysicalBoxRequest(
+    [Required, MinLength(1), MaxLength(100)] string Name,
+    [Required, MinLength(1), MaxLength(200)] string Location,
+    [MaxLength(1000)] string? Description);
+
+/// <summary>Put a document in a physical box. Body: { "boxId": "…" }.</summary>
+public record AssignPhysicalBoxRequest([Required] Guid BoxId);
+
+/// <summary>
 /// A filing rule (Phase 4 organisation). Conditions are all optional individually,
 /// but at least one condition and at least one action are required (enforced by
 /// the service). Category/SetCategory must be one of the classifier categories.
@@ -112,7 +133,17 @@ public record DocumentDto(
     double? ClassificationConfidence = null, string? ClassificationReason = null,
     bool NeedsReview = false, string? ConfirmedCategory = null,
     // Phase 4 organisation — tags assigned to this document (empty when none).
-    List<TagDto>? Tags = null);
+    List<TagDto>? Tags = null,
+    // Phase 7 physical archive — the box holding the paper original (null when none).
+    Guid? PhysicalBoxId = null, string? PhysicalBoxName = null);
+
+/// <summary>One Phase 5 search hit: the document plus a short excerpt showing
+/// the match. <c>Snippet</c> is a ~140-character window of the OCR text around
+/// the first match (or the file name when the match is there instead);
+/// <c>MatchedField</c> is "ocr", "vendor" or "fileName". The frontend
+/// highlights the query terms inside the snippet — the snippet itself is plain
+/// text, never HTML, so it cannot inject markup.</summary>
+public record SearchResultDto(DocumentDto Document, string Snippet, string MatchedField);
 
 public record DashboardDto(
     Guid WorkspaceId, int ArchiveCount, int DocumentCount, int MemberCount,
