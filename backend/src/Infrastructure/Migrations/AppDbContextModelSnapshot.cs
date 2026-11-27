@@ -96,6 +96,17 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Property<Guid?>("ArchiveId")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("ClassificationConfidence")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ClassificationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfirmedCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -124,6 +135,9 @@ namespace DocuArchive.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("NeedsReview")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double?>("OcrConfidence")
                         .HasColumnType("REAL");
@@ -170,6 +184,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("OcrStatus");
+
+                    b.HasIndex("NeedsReview");
 
                     b.HasIndex("WorkspaceId");
 
