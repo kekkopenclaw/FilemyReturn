@@ -46,6 +46,11 @@ for OCR.
   `/monitoring` page (uptime, version/commit, counts by status, review-queue
   depth, storage, failed logins in the last 24h, last backup). No external
   uptime pings or alerts — see `docs/MONITORING.md`.
+- **Phase 10 — Terms & Privacy:** done. Public `/terms` and `/privacy`
+  pages with product-accurate content (on-server OCR, no outside AI service,
+  no data sold, workspace isolation, deletion, session cookies only),
+  linked from the landing-page footer. Contact details are a placeholder
+  for the site owner — no business email or registration number invented.
 - **Design:** the live site uses the cream base (light warm off-white
   `#fcfcf9` + teal green `#0e7c66`) from the DocuArchive preview. A futuristic
   3D cinematic concept lives as a separate `/concept` route in the Angular app

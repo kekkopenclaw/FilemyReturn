@@ -1,0 +1,125 @@
+/* Legal pages (Phase 10: /terms and /privacy) — shared by the Terms of
+   Service and Privacy Policy components. Same cream + teal tokens as the
+   landing page (see src/styles.css); a plain readable article, no
+   restyling of anything else. */
+:host {
+  display: block;
+  background: var(--bg, #fcfcf9);
+  color: var(--ink, #101a17);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.legal-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg, #fcfcf9);
+  border-bottom: 1px solid var(--line, #e3e7e1);
+}
+
+.legal-topbar a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--ink, #101a17);
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.legal-mark {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: var(--green, #0e7c66);
+  color: #fff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+
+.legal-article {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+}
+
+.legal-article h1 {
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: 2rem;
+  line-height: 1.15;
+  margin: 0 0 0.5rem;
+}
+
+.legal-updated {
+  color: var(--muted, #6b7a74);
+  font-size: 0.9rem;
+  margin: 0 0 2rem;
+}
+
+.legal-article h2 {
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  margin: 2rem 0 0.5rem;
+}
+
+.legal-article p {
+  margin: 0 0 1rem;
+  color: var(--ink2, #3d4a45);
+}
+
+.legal-article ul {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+  color: var(--ink2, #3d4a45);
+}
+
+.legal-article li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-article a:not(.btn) {
+  color: var(--green-dark, #0a5e4e);
+}
+
+.legal-contact {
+  border: 1px solid var(--line, #e3e7e1);
+  border-radius: 12px;
+  background: var(--surface2, #f7f8f5);
+  padding: 1rem 1.25rem;
+  margin-top: 2rem;
+}
+
+.legal-footer {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.25rem 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  color: var(--muted, #6b7a74);
+  font-size: 0.9rem;
+}
+
+.legal-footer a {
+  color: var(--green-dark, #0a5e4e);
+}
+
+@media (max-width: 40rem) {
+  .legal-article {
+    padding-top: 1.75rem;
+  }
+
+  .legal-article h1 {
+    font-size: 1.6rem;
+  }
+}
