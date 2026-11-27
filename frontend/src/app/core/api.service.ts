@@ -127,6 +127,21 @@ export class ApiService {
     );
   }
 
+  /**
+   * Preview a document in the browser (Phase 6 viewer). Same bytes as the
+   * download, but the backend serves them with Content-Disposition: inline
+   * and audits the view as Document.Viewed. Only PDF, PNG, JPEG, GIF and
+   * WebP render inline — TIFF and BMP return 400, so callers must offer a
+   * download instead. Fetched through HttpClient (not a raw link) so the
+   * Bearer token travels with the request.
+   */
+  previewDocument(workspaceId: string, documentId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/preview`,
+      { responseType: 'blob' },
+    );
+  }
+
   // -- Dashboard ----------------------------------------------------------
 
   getDashboard(workspaceId: string): Observable<DashboardStats> {

@@ -11,6 +11,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
 import { DocumentSummary } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
+import { DocumentViewer } from '../document-viewer/document-viewer';
 import { EmptyState } from '../../../shared/empty-state/empty-state';
 import { LoadingSpinner } from '../../../shared/loading-spinner/loading-spinner';
 
@@ -46,7 +47,7 @@ export function categoryLabel(category: string | null | undefined): string {
  */
 @Component({
   selector: 'app-document-list',
-  imports: [DatePipe, EmptyState, LoadingSpinner],
+  imports: [DatePipe, DocumentViewer, EmptyState, LoadingSpinner],
   templateUrl: './document-list.html',
   styleUrl: './document-list.css',
 })
@@ -68,6 +69,8 @@ export class DocumentList {
   /** Phase 3: document whose OCR details panel is open. */
   protected readonly expandedId = signal<string | null>(null);
   protected readonly reprocessingId = signal<string | null>(null);
+  /** Phase 6: document open in the in-app viewer, or null when closed. */
+  protected readonly viewingDoc = signal<DocumentSummary | null>(null);
   /** Phase 3 classification: show only the human-review queue (from ?review=true). */
   protected readonly reviewOnly = signal(false);
   /** Phase 3 classification: document whose category is being confirmed. */
@@ -273,24 +276,17 @@ export class DocumentList {
     });
   }
 
-  /** Open the stored file in a new tab (PDFs and images render in-browser). */
-  protected view(doc: DocumentSummary): void {
-    const workspaceId = this.workspaceService.selectedWorkspaceId();
-    if (!workspaceId || this.downloadingId()) return;
-    this.downloadingId.set(doc.id);
-    this.api.downloadDocument(workspaceId, doc.id).subscribe({
-      next: (blob) => {
-        this.downloadingId.set(null);
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // Let the new tab load before releasing the object URL.
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      },
-      error: () => {
-        this.downloadingId.set(null);
-        this.error.set('Could not open the document. Please try again.');
-      },
-    });
+  /**
+   * Phase 6: open the document in the in-app viewer (preview endpoint,
+   * rendered inline) instead of a new browser tab.
+   */
+  protected openViewer(doc: DocumentSummary): void {
+    this.viewingDoc.set(doc);
+  }
+
+  /** Phase 6: close the in-app viewer. */
+  protected closeViewer(): void {
+    this.viewingDoc.set(null);
   }
 
   private load(workspaceId: string, silent = false): void {

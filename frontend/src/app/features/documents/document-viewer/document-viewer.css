@@ -1,0 +1,109 @@
+.viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(16, 26, 23, 0.6);
+}
+
+.viewer-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(64rem, 100%);
+  max-height: calc(100vh - 2rem);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.viewer-title {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-surface-muted);
+}
+
+/* Centred loading / error / unsupported-type states. */
+.viewer-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.viewer-state p {
+  margin: 0;
+  max-width: 28rem;
+}
+
+.viewer-state .error-banner {
+  margin: 0;
+}
+
+.viewer-frame {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  border: 0;
+  background: var(--color-surface);
+}
+
+.viewer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.viewer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.viewer-download-error {
+  margin: 0 1.25rem 1rem;
+}
+
+@media (max-width: 40rem) {
+  .viewer-backdrop {
+    padding: 0.5rem;
+  }
+
+  .viewer-frame,
+  .viewer-image {
+    max-height: calc(100vh - 12rem);
+  }
+}

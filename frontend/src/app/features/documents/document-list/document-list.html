@@ -117,8 +117,7 @@
                 <button
                   type="button"
                   class="btn btn-small"
-                  [disabled]="downloadingId() === doc.id"
-                  (click)="view(doc)"
+                  (click)="openViewer(doc)"
                 >
                   View
                 </button>
@@ -217,5 +216,16 @@
         </tbody>
       </table>
     </div>
+  }
+}
+
+<!-- Phase 6: in-app viewer — renders the preview inline, no new tab. -->
+@if (viewingDoc(); as doc) {
+  @if (workspaceService.selectedWorkspaceId(); as workspaceId) {
+    <app-document-viewer
+      [workspaceId]="workspaceId"
+      [doc]="doc"
+      (closed)="closeViewer()"
+    />
   }
 }

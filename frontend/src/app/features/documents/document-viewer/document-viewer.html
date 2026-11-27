@@ -1,0 +1,93 @@
+<div
+  class="viewer-backdrop"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="'Preview of ' + doc().originalFileName"
+  (click)="onBackdropClick($event)"
+>
+  <div class="viewer-dialog">
+    <div class="viewer-header">
+      <h2 class="viewer-title">{{ doc().originalFileName }}</h2>
+      <button
+        type="button"
+        class="btn btn-small viewer-close"
+        (click)="close()"
+        aria-label="Close preview"
+      >
+        Close
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="viewer-body viewer-state">
+        <app-loading-spinner />
+        <p>Loading preview…</p>
+      </div>
+    } @else if (notPreviewable()) {
+      <div class="viewer-body viewer-state">
+        <p>
+          This file type ({{ doc().mimeType }}) can’t be previewed in the
+          browser. Download it to open it in another app.
+        </p>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="downloading()"
+          (click)="download()"
+        >
+          {{ downloading() ? 'Downloading…' : 'Download' }}
+        </button>
+        @if (downloadError()) {
+          <p class="error-banner" role="alert">{{ downloadError() }}</p>
+        }
+      </div>
+    } @else if (error()) {
+      <div class="viewer-body viewer-state">
+        <p class="error-banner" role="alert">{{ error() }}</p>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="downloading()"
+          (click)="download()"
+        >
+          {{ downloading() ? 'Downloading…' : 'Download instead' }}
+        </button>
+        @if (downloadError()) {
+          <p class="error-banner" role="alert">{{ downloadError() }}</p>
+        }
+      </div>
+    } @else if (previewUrl()) {
+      <div class="viewer-body">
+        @if (isPdf()) {
+          <iframe
+            class="viewer-frame"
+            title="Preview of {{ doc().originalFileName }}"
+            [src]="previewUrl()"
+          ></iframe>
+        } @else {
+          <img
+            class="viewer-image"
+            [src]="previewUrl()"
+            [alt]="'Preview of ' + doc().originalFileName"
+          />
+        }
+      </div>
+      <div class="viewer-footer">
+        <span>{{ doc().mimeType }}</span>
+        <button
+          type="button"
+          class="btn btn-small"
+          [disabled]="downloading()"
+          (click)="download()"
+        >
+          {{ downloading() ? 'Downloading…' : 'Download' }}
+        </button>
+      </div>
+      @if (downloadError()) {
+        <p class="error-banner viewer-download-error" role="alert">
+          {{ downloadError() }}
+        </p>
+      }
+    }
+  </div>
+</div>

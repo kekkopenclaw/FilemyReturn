@@ -60,4 +60,34 @@ test.describe('documents', () => {
     await search.fill('plumber');
     await expect(row).toBeHidden({ timeout: 15_000 });
   });
+
+  test('View opens the in-app viewer and shows the image', async ({ page }) => {
+    await registerAndLogin(page);
+    await createWorkspace(page, 'E2E Viewer');
+
+    await page.goto('/documents');
+    const workspaceSelect = page.getByLabel('Select workspace');
+    if (await workspaceSelect.isVisible()) {
+      await workspaceSelect.selectOption({ label: 'E2E Viewer' });
+    }
+    await expect(page.getByText('Documents in E2E Viewer')).toBeVisible();
+
+    const uploadInput = page.locator('#document-upload');
+    await expect(uploadInput).toBeEnabled();
+    await uploadInput.setInputFiles(RECEIPT);
+    await expect(page.getByText('Document uploaded.')).toBeVisible();
+
+    const row = page.locator('tr', { hasText: 'demo-receipt.png' });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: 'View', exact: true }).click();
+
+    // The viewer renders the preview inline (Phase 6) — no new tab.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole('img', { name: 'Preview of demo-receipt.png' }),
+    ).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close preview' }).click();
+    await expect(dialog).toBeHidden();
+  });
 });
