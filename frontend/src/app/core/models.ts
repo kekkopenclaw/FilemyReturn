@@ -214,3 +214,15 @@ export interface SearchParams {
   needsReview?: boolean;
   status?: string;
 }
+
+// Phase 8 backup: what a backup would contain right now. `provider` is
+// "Sqlite" or "Postgres" — in-app download is SQLite-only.
+export interface BackupInfo {
+  provider: string;
+  databaseSizeBytes: number;
+  documentCount: number;
+  workspaceCount: number;
+  fileCount: number;
+  storageSizeBytes: number;
+  generatedAtUtc: string;
+}

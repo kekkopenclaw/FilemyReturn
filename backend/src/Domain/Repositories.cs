@@ -17,6 +17,8 @@ public interface IWorkspaceRepository
     Task<int> CountOwnersAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     Task DeleteAsync(Workspace workspace, CancellationToken cancellationToken = default);
     Task<int> CountMembersAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    /// <summary>Total workspaces in the system (Phase 8 backup info).</summary>
+    Task<int> CountAllAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for archives (always scoped to a workspace).</summary>
@@ -103,6 +105,8 @@ public interface IDocumentRepository
     /// LIKE matching on SQLite.</summary>
     Task<List<Document>> SearchAsync(Guid workspaceId, DocumentSearchCriteria criteria, CancellationToken cancellationToken = default);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    /// <summary>Total documents in the system (Phase 8 backup info).</summary>
+    Task<int> CountAllAsync(CancellationToken cancellationToken = default);
     /// <summary>Documents sitting in one physical box (Phase 7), newest first. Tags are loaded with them, like the list endpoint.</summary>
     Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken cancellationToken = default);
     /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>

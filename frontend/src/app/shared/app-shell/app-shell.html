@@ -26,6 +26,9 @@
       <a routerLink="/filing-rules" routerLinkActive="active" ariaCurrentWhenActive="page">Filing rules</a>
       <a routerLink="/boxes" routerLinkActive="active" ariaCurrentWhenActive="page">Boxes</a>
       <a routerLink="/audit-logs" routerLinkActive="active" ariaCurrentWhenActive="page">Audit log</a>
+      @if (auth.currentUser()?.isSystemAdmin) {
+        <a routerLink="/backup" routerLinkActive="active" ariaCurrentWhenActive="page">Backup</a>
+      }
       <a routerLink="/change-password" routerLinkActive="active" ariaCurrentWhenActive="page">Change password</a>
     </nav>
 

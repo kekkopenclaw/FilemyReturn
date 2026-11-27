@@ -28,6 +28,11 @@ export ASPNETCORE_URLS=http://localhost:5000
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export ConnectionStrings__Default="Data Source=$RUN_DIR/e2e.db"
 export Storage__RootPath="$RUN_DIR/storage"
-# Development allows the dev JWT placeholder; the seeded admin password is
-# generated per run and never used by these tests (they register their own users).
+# E2E-only admin password: the seeded admin (admin@docuarchive.local) is
+# created with this password, so the backup test can sign in as a system
+# administrator. Throwaway local database only — never the live site, and
+# never a real password. The admin must still change it on first login
+# (MustChangePassword), exactly like the production seed.
+export ADMIN_PASSWORD='E2EAdminPassword123!@#'
+# Development allows the dev JWT placeholder.
 exec "$DOTNET" run --project . -c Release --no-restore --no-launch-profile

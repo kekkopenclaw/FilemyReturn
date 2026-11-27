@@ -10,6 +10,9 @@ public interface IOcrEngine
     Task<OcrResult> ExtractTextAsync(string storageKey, CancellationToken cancellationToken = default);
 }
 
+/// <summary>One stored file (Phase 8 backup): its opaque key and size in bytes.</summary>
+public record StoredFileInfo(string Key, long SizeBytes);
+
 /// <summary>Document file storage abstraction. Phase 1: local filesystem only (see Infrastructure). No S3 implementation yet (Phase 2 TODO).</summary>
 public interface IDocumentStorage
 {
@@ -19,6 +22,33 @@ public interface IDocumentStorage
     Task<Stream?> OpenReadAsync(string storageKey, CancellationToken cancellationToken = default);
     /// <summary>Deletes a stored file. No-op when the key does not exist.</summary>
     Task DeleteAsync(string storageKey, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Lists every file currently in storage (Phase 8 backup). Keys are the
+    /// opaque GUID filenames; the list is what the backup archives, so a file
+    /// with no document row behind it is still backed up rather than lost.
+    /// </summary>
+    Task<IReadOnlyList<StoredFileInfo>> ListFilesAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Database backup primitives (Phase 8). The snapshot is a consistent
+/// copy of the live database, taken without stopping the app. Only SQLite
+/// is supported in-app: PostgreSQL deployments use pg_dump or their
+/// provider's backup (see docs/BACKUP.md) — <see cref="CreateSnapshotAsync"/>
+/// throws <see cref="NotSupportedException"/> there instead of pretending.
+/// </summary>
+public interface IDatabaseBackup
+{
+    /// <summary>Configured provider: "Sqlite" or "Postgres".</summary>
+    string Provider { get; }
+    /// <summary>
+    /// Writes a consistent snapshot of the database to <paramref name="targetPath"/>.
+    /// SQLite: <c>VACUUM INTO</c> (works while the app is running). PostgreSQL:
+    /// throws <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task CreateSnapshotAsync(string targetPath, CancellationToken cancellationToken = default);
+    /// <summary>Current database size in bytes (SQLite: page count × page size; PostgreSQL: pg_database_size).</summary>
+    Task<long> GetDatabaseSizeBytesAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Append-only audit writer. Audit records are never editable or deletable via the API.</summary>

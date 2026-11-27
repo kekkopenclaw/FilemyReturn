@@ -1,0 +1,78 @@
+.page-intro {
+  color: var(--color-muted);
+  margin-top: 0.25rem;
+}
+
+.info-card {
+  margin: 1rem 0 1.5rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.info-card h2 {
+  margin-top: 0;
+}
+
+.notice-card {
+  margin: 1rem 0 1.5rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.notice-card h2 {
+  margin-top: 0;
+}
+
+.info-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.info-list > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.info-list dt {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.info-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.success-note {
+  color: var(--color-accent);
+  font-weight: 600;
+  margin: 0.75rem 0 0;
+}
+
+.info-card ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.info-card li + li {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 40rem) {
+  .info-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}

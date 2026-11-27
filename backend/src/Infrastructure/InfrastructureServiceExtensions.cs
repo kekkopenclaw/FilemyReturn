@@ -64,6 +64,8 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IWorkspaceAccessService, WorkspaceAccessService>();
         services.AddScoped<IDocumentStorage, LocalFileSystemStorage>();
+        // Phase 8 backup: consistent database snapshots (SQLite VACUUM INTO).
+        services.AddScoped<IDatabaseBackup, DatabaseBackupService>();
         // Phase 7 physical archive: QR codes for box labels (QRCoder, MIT, SVG only).
         services.AddScoped<IQrCodeService, QrCodeService>();
         // Phase 3 OCR: local Tesseract CLI (free, CPU-only, nothing leaves the machine).

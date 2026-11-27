@@ -134,6 +134,22 @@ builder.Services.AddRateLimiter(options =>
             PermitLimit = 30, Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0, AutoReplenishment = true
         }));
+    // Refresh gets its own bucket at the general limit, not the strict "auth"
+    // one. It takes no credentials — it presents an already-issued rotating
+    // token, and the real controls are token entropy, rotation, reuse
+    // detection and family revocation. Under "auth" its requests (no email
+    // in the body, so one IP-only partition) hit 30/min and answered 429,
+    // which the frontend reads as "session dead" and logs the user out on
+    // the next full-page reload. 120/min still bounds abuse, and leaves
+    // headroom for households / shared IPs and for test suites that reload
+    // the page often.
+    options.AddPolicy("refresh", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: ClientIp(context),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120, Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0, AutoReplenishment = true
+        }));
 });
 
 // Swagger / OpenAPI (Swashbuckle, MIT licence, free and open-source).

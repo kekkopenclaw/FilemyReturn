@@ -1,10 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   Archive,
   AuditLogEntry,
+  BackupInfo,
   DashboardStats,
   DocumentSummary,
   FilingRule,
@@ -417,6 +418,32 @@ export class ApiService {
     return this.http.delete<DocumentSummary>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/physical-box`,
     );
+  }
+
+  // -- Backup (Phase 8) ---------------------------------------------------
+
+  /**
+   * What a backup would contain right now (system admins only): the
+   * database provider and size, and how many documents, workspaces and
+   * stored files there are.
+   */
+  getBackupInfo(): Observable<BackupInfo> {
+    return this.http.get<BackupInfo>(`${this.baseUrl}/admin/backup/info`);
+  }
+
+  /**
+   * Downloads the backup ZIP (system admins only): a consistent database
+   * snapshot, every stored file, and a manifest describing the contents.
+   * The full response is returned so the caller can read the file name
+   * from Content-Disposition. 403 when not a system admin; 501 on a
+   * PostgreSQL deployment (in-app backup is SQLite-only — see
+   * docs/BACKUP.md).
+   */
+  downloadBackup(): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/admin/backup/download`, {
+      responseType: 'blob',
+      observe: 'response',
+    });
   }
 
   // -- Dashboard ----------------------------------------------------------

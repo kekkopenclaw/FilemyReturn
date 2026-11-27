@@ -177,3 +177,25 @@ public record UploadHistoryDto(
 public record AuditLogDto(
     Guid Id, Guid? WorkspaceId, string UserId, string Action,
     string? EntityType, string? EntityId, string? Details, DateTime CreatedAt);
+
+/// <summary>
+/// What a backup would contain (Phase 8). Served by GET /api/admin/backup/info
+/// so the admin page can show real numbers before the download starts.
+/// <c>DatabaseSizeBytes</c> is the live database size; <c>StorageSizeBytes</c>
+/// is the total of the stored files. On PostgreSQL the download endpoint
+/// refuses (501) — the info still reports the counts.
+/// </summary>
+public record BackupInfoDto(
+    string Provider, long DatabaseSizeBytes, int DocumentCount, int WorkspaceCount,
+    int FileCount, long StorageSizeBytes, DateTime GeneratedAtUtc);
+
+/// <summary>
+/// Manifest written into every backup ZIP (Phase 8). Lets anyone restoring
+/// check what the archive holds — and that it is complete — without opening
+/// the database: the file list in the ZIP must match <c>FileCount</c> and the
+/// database snapshot must open as SQLite.
+/// </summary>
+public record BackupManifestDto(
+    int BackupVersion, string Provider, DateTime GeneratedAtUtc,
+    long DatabaseSizeBytes, int DocumentCount, int WorkspaceCount,
+    int FileCount, long StorageSizeBytes);

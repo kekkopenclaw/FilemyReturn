@@ -57,4 +57,19 @@ public class LocalFileSystemStorage : IDocumentStorage
         if (File.Exists(fullPath)) File.Delete(fullPath);
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<StoredFileInfo>> ListFilesAsync(CancellationToken ct = default)
+    {
+        // Only top-level files: this directory holds nothing but uploaded
+        // document bytes (GUID filenames), so there is nothing to recurse into.
+        var files = Directory.Exists(_rootPath)
+            ? Directory.GetFiles(_rootPath)
+                .Select(path => new FileInfo(path))
+                .Select(info => new StoredFileInfo(info.Name, info.Length))
+                .OrderBy(f => f.Key, StringComparer.Ordinal)
+                .ToList()
+            : new List<StoredFileInfo>();
+        return Task.FromResult<IReadOnlyList<StoredFileInfo>>(files);
+    }
 }

@@ -25,7 +25,20 @@ namespace DocuArchive.WebApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/auth")]
-[EnableRateLimiting("auth")]
+// NOTE: rate limiting is per action, not per controller — the actions need
+// different buckets. Login/register/change-password take credentials, so
+// they stay under the strict "auth" policy (30/min per IP + account, the
+// brute-force control). Refresh takes no credentials — it presents an
+// already-issued rotating token — so it has its own "refresh" policy
+// (120/min per IP); the real controls there are token entropy, rotation,
+// reuse detection and family revocation. Refresh used to share the "auth"
+// bucket, and its requests carry no email, so they all fell in one IP-only
+// partition: 30 refreshes in a minute from one IP (one household, one
+// office NAT, or an E2E suite that reloads the page a lot — every reload
+// silently refreshes, because the access token lives in memory only)
+// answered 429 and logged the user out. Proven 2026-11-27: the full E2E
+// suite failed the same two tests with a login-page screenshot, and a
+// direct probe of POST /api/auth/refresh returned 30× 401 then 429.
 public class AuthController : ControllerBase
 {
     private const string RefreshCookieName = "docuarchive.refresh";
@@ -86,6 +99,7 @@ public class AuthController : ControllerBase
     /// <summary>Registers a new user account.</summary>
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<UserDto>> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
         var user = await _auth.RegisterAsync(request, ct);
@@ -95,6 +109,7 @@ public class AuthController : ControllerBase
     /// <summary>Logs in and returns an access token (15 min). The refresh token (7 days) is set as an HttpOnly cookie, not in the body.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var res = await _auth.LoginAsync(request, ct);
@@ -105,6 +120,7 @@ public class AuthController : ControllerBase
     /// <summary>Rotates a refresh token and returns a new token pair (new cookie, empty body token).</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("refresh")]
     public async Task<ActionResult<AuthResponse>> Refresh([FromBody] RefreshRequest request, CancellationToken ct)
     {
         var token = ResolveRefreshToken(request.RefreshToken)
@@ -117,6 +133,7 @@ public class AuthController : ControllerBase
     /// <summary>Revokes a refresh token (logout) and clears the cookie. Idempotent — no token, no problem.</summary>
     [HttpPost("logout")]
     [AllowAnonymous]
+    [EnableRateLimiting("default")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
         var token = ResolveRefreshToken(request.RefreshToken);
@@ -132,6 +149,7 @@ public class AuthController : ControllerBase
     /// <c>MustChangePassword</c> (first-login flow) — the current password is still required.
     /// </summary>
     [HttpPost("change-password")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -148,6 +166,7 @@ public class AuthController : ControllerBase
     /// <summary>Returns the current user's profile.</summary>
     [HttpGet("me")]
     [Authorize]
+    [EnableRateLimiting("default")]
     public async Task<ActionResult<UserDto>> Me(CancellationToken ct)
         => Ok(await _auth.GetProfileAsync(UserId(this), ct));
 }

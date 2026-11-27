@@ -61,6 +61,9 @@ public class EfWorkspaceRepository : IWorkspaceRepository
 
     public Task<int> CountMembersAsync(Guid workspaceId, CancellationToken ct = default)
         => _db.WorkspaceMemberships.CountAsync(m => m.WorkspaceId == workspaceId, ct);
+
+    public Task<int> CountAllAsync(CancellationToken ct = default)
+        => _db.Workspaces.CountAsync(ct);
 }
 
 public class EfArchiveRepository : IArchiveRepository
@@ -403,6 +406,9 @@ public class EfDocumentRepository : IDocumentRepository
 
     public Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
         => _db.Documents.CountAsync(d => d.WorkspaceId == workspaceId, ct);
+
+    public Task<int> CountAllAsync(CancellationToken ct = default)
+        => _db.Documents.CountAsync(ct);
 
     /// <summary>Documents sitting in one physical box (Phase 7), newest first.</summary>
     public Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken ct = default)

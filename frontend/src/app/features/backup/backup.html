@@ -1,0 +1,125 @@
+<h1>Backup</h1>
+<p class="page-intro">
+  Download everything DocuArchive holds — a consistent copy of the database
+  plus every uploaded file — as one timestamped ZIP, and keep it somewhere
+  safe.
+</p>
+
+@if (loading()) {
+  <app-loading-spinner />
+} @else if (forbidden()) {
+  <div class="notice-card" role="status">
+    <h2>System administrators only</h2>
+    <p>
+      A backup contains every workspace's documents, so only a system
+      administrator can download one. If you need a copy of your own
+      workspace's files, download them from the Documents page instead.
+    </p>
+  </div>
+} @else if (error()) {
+  <div class="error-banner" role="alert">
+    {{ error() }}
+    <button type="button" class="btn btn-secondary" (click)="load()">
+      Try again
+    </button>
+  </div>
+} @else if (info(); as backup) {
+  <section class="info-card" aria-label="What the backup contains">
+    <h2>What the backup contains</h2>
+    <dl class="info-list">
+      <div>
+        <dt>Database</dt>
+        <dd>
+          {{ backup.provider }} — {{ formatBytes(backup.databaseSizeBytes) }}
+        </dd>
+      </div>
+      <div>
+        <dt>Documents</dt>
+        <dd>{{ backup.documentCount }}</dd>
+      </div>
+      <div>
+        <dt>Workspaces</dt>
+        <dd>{{ backup.workspaceCount }}</dd>
+      </div>
+      <div>
+        <dt>Stored files</dt>
+        <dd>
+          {{ backup.fileCount }} files —
+          {{ formatBytes(backup.storageSizeBytes) }}
+        </dd>
+      </div>
+      <div>
+        <dt>Checked</dt>
+        <dd>{{ backup.generatedAtUtc | date: 'medium' }}</dd>
+      </div>
+    </dl>
+    <p class="field-hint">
+      The ZIP also carries a manifest.json listing exactly what is inside,
+      so a restore can be checked without opening the database.
+    </p>
+
+    <div class="form-actions">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="download()"
+        [disabled]="downloading()"
+      >
+        {{ downloading() ? 'Preparing backup…' : 'Download backup' }}
+      </button>
+    </div>
+
+    @if (downloaded()) {
+      <p class="success-note" role="status">
+        Backup downloaded. Store it somewhere safe — off this server.
+      </p>
+    }
+    @if (downloadError()) {
+      <div class="error-banner" role="alert">
+        {{ downloadError() }}
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="download()"
+        >
+          Try again
+        </button>
+      </div>
+    }
+  </section>
+
+  <section class="info-card" aria-label="Keeping backups safe">
+    <h2>Keeping backups safe</h2>
+    <ul>
+      <li>
+        On the free hosting tier the database and the uploaded files live on
+        disk that is wiped on every redeploy — a backup only helps if it is
+        downloaded <strong>off this server</strong>. Download one before
+        every deploy, at least.
+      </li>
+      <li>
+        A backup holds every workspace's documents. Treat the ZIP like a
+        password: encrypted storage, never emailed or shared. Every download
+        is written to the audit log.
+      </li>
+      <li>
+        Restoring is a manual procedure — stop the app, replace the database
+        file and the storage folder with the backup's contents, restart.
+        The full steps are in
+        <a
+          href="https://github.com/kekkopenclaw/FilemyReturn/blob/main/docs/BACKUP.md"
+          target="_blank"
+          rel="noopener"
+          >docs/BACKUP.md</a
+        >.
+      </li>
+      @if (backup.provider === 'Postgres') {
+        <li>
+          This deployment runs PostgreSQL, so the in-app download is not
+          available — take database backups with pg_dump or your database
+          provider instead (docs/BACKUP.md).
+        </li>
+      }
+    </ul>
+  </section>
+}

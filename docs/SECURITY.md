@@ -42,9 +42,22 @@ reason — nothing here is claimed that the code does not do.
 rejection):
 
 - Default policy: **120 requests/minute per client IP**.
-- Auth policy (login / register / refresh / password change): **30
+- Auth policy (login / register / password change): **30
   requests/minute**, partitioned per IP and per account email where the
-  request carries one.
+  request carries one — the brute-force control for credential-taking
+  endpoints.
+- Refresh policy: **120 requests/minute per client IP**. Refresh used to
+  share the auth policy, but a refresh request carries no email, so every
+  refresh from one IP fell in a single IP-only partition: 30 refreshes in
+  a minute (one household, one office NAT, or a test suite that reloads
+  the page a lot — every reload silently refreshes, because the access
+  token lives in memory only) answered 429, which the frontend reads as
+  "session dead" and logs the user out. Refresh takes no credentials — it
+  presents an already-issued rotating token — so the controls there are
+  token entropy, rotation, reuse detection and family revocation, and the
+  bucket is the general limit. Regression-tested
+  (`RefreshRateLimitTests`): 40 unauthenticated refreshes are all 401,
+  never 429, while a 31st login in a minute is still 429.
 
 ## Secrets — environment only, never in the repo
 
@@ -138,6 +151,28 @@ response:
 - The runtime image runs as a **non-root user** (`USER app` in the
   `Dockerfile`).
 
+## Backups
+
+- A system administrator can download a complete backup — a consistent
+  database snapshot plus every stored file, with a manifest — from the
+  **Backup** page (`GET /api/admin/backup/download`). Every download is
+  audited as `Backup.Downloaded` (no workspace: a backup spans all of
+  them). The ZIP is built in a temp directory that is deleted after the
+  download, and the database snapshot is taken with SQLite `VACUUM INTO`,
+  which does not disturb the live database.
+- There is deliberately **no in-app restore endpoint**: uploading a
+  database file to overwrite production data is too big a security
+  surface. Restore is a manual, admin-only procedure — see
+  `docs/BACKUP.md`.
+- On the Render Free tier the database and the uploaded files live on
+  ephemeral disk and are wiped on every redeploy, so a backup only helps
+  if it is downloaded **off the server** — before every deploy, at
+  least. A backup holds every workspace's documents: treat the ZIP like a
+  password (encrypted storage, never emailed or shared).
+- In-app backup is SQLite-only. On PostgreSQL the download answers 501
+  and the database must be backed up with `pg_dump` or the provider's own
+  backup feature — also `docs/BACKUP.md`.
+
 ## Audit logging
 
 Reads and writes that matter are audited — who did what, when, and in
@@ -159,6 +194,7 @@ which workspace. The audited actions include:
   `Workspace.MemberAdded`, `Workspace.MemberRemoved`,
   `Workspace.MemberRoleChanged`, `Workspace.AccessDenied`.
 - Archives: `Archive.Created`.
+- Admin: `Backup.Downloaded`.
 
 Audit entries survive workspace deletion (see above) and are read-only —
 there is no edit or delete endpoint for the audit log.
