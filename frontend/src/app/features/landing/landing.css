@@ -1,4 +1,4 @@
-:host{--shadow:0 12px 32px rgba(16,26,23,.08);display:block;background:#fcfcf9;color:#101a17;font-family:'IBM Plex Sans',system-ui,sans-serif;line-height:1.5}
+:host{--shadow:0 12px 32px rgba(16,26,23,.08);--zigzag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10'%3E%3Cpath d='M0 10 L6 0 L12 10 Z' fill='%23ffffff'/%3E%3C/svg%3E");display:block;background:#fcfcf9;color:#101a17;font-family:'IBM Plex Sans',system-ui,sans-serif;line-height:1.5}
 h1,h2,h3{font-family:'Manrope','IBM Plex Sans',system-ui,sans-serif;font-weight:800;letter-spacing:-.01em}
 a{color:#0a5e4e}
 .btn-large{padding:.75rem 1.5rem;font-size:1.05rem}
@@ -25,16 +25,17 @@ a{color:#0a5e4e}
 .demo-title{font-weight:800;font-size:1.1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .demo-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:1.25rem;align-items:stretch}
 .scene{position:relative;min-height:32rem;perspective:1200px;overflow:hidden;border-radius:18px;background:linear-gradient(180deg,#fff 0%,#f7f8f5 100%);border:1px solid #e3e7e1}
-.grid-floor{position:absolute;left:-25%;right:-25%;bottom:-4%;height:46%;background-image:linear-gradient(rgba(14,124,102,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(14,124,102,.14) 1px,transparent 1px);background-size:44px 44px;transform:rotateX(62deg);transform-origin:bottom;mask-image:linear-gradient(to top,#000 30%,transparent 95%)}
-.orbit-wrap{position:absolute;left:50%;top:46%;transform:rotateX(72deg);pointer-events:none}
+.grid-floor{position:absolute;left:-25%;right:-25%;bottom:-4%;height:46%;background-image:linear-gradient(rgba(14,124,102,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(14,124,102,.14) 1px,transparent 1px);background-size:44px 44px;transform:rotateX(62deg) translate(calc(var(--px,0)*24px),calc(var(--py,0)*10px));transform-origin:bottom;mask-image:linear-gradient(to top,#000 30%,transparent 95%)}
+.orbit-wrap{position:absolute;left:50%;top:46%;transform:rotateX(72deg) translate(calc(var(--px,0)*-16px),calc(var(--py,0)*-10px));pointer-events:none}
 .ring-a-wrap{width:26rem;height:26rem;margin:-13rem 0 0 -13rem}
 .ring-b-wrap{width:19rem;height:19rem;margin:-9.5rem 0 0 -9.5rem}
 .orbit-ring{width:100%;height:100%;border:1px solid rgba(14,124,102,.28);border-radius:50%}
 .ring-b{border-color:rgba(14,124,102,.16)}
 .s-receipt{position:relative;z-index:2;width:15.5rem;margin:2.5rem auto 0;transform:rotateX(var(--rx,-8deg)) rotateY(var(--ry,10deg));transition:transform .35s ease}
-.receipt{background:#fff;border:1px solid #e3e7e1;border-bottom:none;border-radius:3px 3px 0 0;box-shadow:var(--shadow);padding:1.1rem 1rem 1.25rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.8rem;line-height:1.45;position:relative;color:#101a17;animation:float 6s ease-in-out infinite}
-.receipt::after{content:"";position:absolute;left:-1px;right:-1px;bottom:-9px;height:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10'%3E%3Cpath d='M0 10 L6 0 L12 10 Z' fill='%23ffffff'/%3E%3C/svg%3E") repeat-x;background-size:12px 10px}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.receipt{background:#fff;border:1px solid #e3e7e1;border-top:none;border-bottom:none;border-radius:0;box-shadow:var(--shadow);padding:1.1rem 1rem 1.25rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.8rem;line-height:1.45;position:relative;color:#101a17;animation:float 4.5s ease-in-out infinite}
+.receipt::before{content:"";position:absolute;left:-1px;right:-1px;top:-9px;height:10px;background:var(--zigzag) repeat-x;background-size:12px 10px;transform:scaleY(-1)}
+.receipt::after{content:"";position:absolute;left:-1px;right:-1px;bottom:-9px;height:10px;background:var(--zigzag) repeat-x;background-size:12px 10px}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 .r-shop{font-weight:800;font-size:1.05rem;margin:0;text-align:center;letter-spacing:.06em}
 .r-branch,.r-vat{margin:.15rem 0;text-align:center;color:#6b7a74;font-size:.72rem}
 .r-items{list-style:none;margin:.75rem 0;padding:.6rem 0;border-top:1px dashed #e3e7e1;border-bottom:1px dashed #e3e7e1}
@@ -48,13 +49,15 @@ a{color:#0a5e4e}
 .is-scanning .scan-line{opacity:1;animation:sweep 1.2s ease-in-out}
 @keyframes sweep{from{top:0}to{top:100%}}
 .chips{position:absolute;inset:0;pointer-events:none}
-.chip{position:absolute;display:flex;flex-direction:column;gap:.05rem;background:#fff;border:1px solid #e3e7e1;border-radius:99px;box-shadow:var(--shadow);padding:.45rem .9rem;opacity:0;transform:translateY(10px) scale(.92);transition:.45s ease}
-.chip.revealed{opacity:1;transform:translateY(0) scale(1);animation:chipFloat 5s ease-in-out infinite}
+.chip{position:absolute;display:flex;flex-direction:column;gap:.05rem;background:#fff;border:1px solid #e3e7e1;border-radius:99px;box-shadow:var(--shadow);padding:.45rem .9rem;opacity:0;transform:translateY(10px) scale(.92);transition:.45s ease;pointer-events:auto;cursor:default}
+.chip.revealed{opacity:1;transform:translateY(0) scale(1);animation:chipFloat 4s ease-in-out infinite}
 .chip-a.revealed{animation-delay:0s}
-.chip-b.revealed{animation-delay:.6s}
-.chip-c.revealed{animation-delay:1.2s}
-.chip-e.revealed{animation-delay:1.8s}
-@keyframes chipFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1)}}
+.chip-b.revealed{animation-delay:.5s}
+.chip-c.revealed{animation-delay:1s}
+.chip-e.revealed{animation-delay:1.5s}
+@keyframes chipFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1)}}
+/* Hover/touch lift: the float animation owns `transform`, so the lift
+   uses the independent `translate` property — the two compose. */.chip.revealed:hover,.chip.revealed:active{translate:0 -6px;border-color:#0e7c66;box-shadow:0 16px 32px rgba(16,26,23,.16),0 0 0 3px #e6f4ef}
 .chip-bar{display:block;height:5px;min-width:6.5rem;border-radius:99px;background:#f2f3ef;overflow:hidden;margin-top:.3rem}
 .chip-bar span{display:block;height:100%;background:linear-gradient(90deg,#0e7c66,#2ec4a0);border-radius:99px;transition:width .5s ease}
 .chip-a{top:12%;left:4%}
@@ -83,7 +86,7 @@ a{color:#0a5e4e}
 .s-scene .btn-block{margin-top:0}
 .pill-row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem}
 .filed-pill{display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1px solid #e3e7e1;border-radius:99px;box-shadow:var(--shadow);padding:.55rem 1rem;font-weight:700;color:#0a5e4e}
-.hud{background:#fff;border:1px solid #e3e7e1;border-radius:18px;box-shadow:var(--shadow);padding:1rem 1.25rem;margin-top:1rem}
+.hud{background:#fff;border:1px solid #e3e7e1;border-radius:18px;box-shadow:var(--shadow);padding:1rem 1.25rem;margin-top:1rem;transition:transform .35s ease}
 .hud-row{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .hud-eng{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.75rem;letter-spacing:.05em;color:#6b7a74}
 .hud-st{font-weight:700;color:#0a5e4e}
@@ -93,9 +96,15 @@ a{color:#0a5e4e}
 .demo-note{color:#6b7a74;font-size:.9rem;margin:.75rem 0 0;text-align:center}
 .btn-outline-light{background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff}
 .btn-outline-light:hover{border-color:#fff;color:#fff}
-.showcase-stage{background:#fff;border:1px solid #e3e7e1;border-radius:18px;box-shadow:var(--shadow);padding:1.5rem}
-.showcase-screen{display:grid;grid-template-columns:15rem 1fr;gap:1.5rem;align-items:center}
-.mini-receipt{position:relative;background:#fff;border:1px solid #e3e7e1;border-radius:6px;box-shadow:var(--shadow);padding:1rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.78rem;line-height:1.45;color:#101a17}
+/* Buttons answer the pointer: lift on hover, press on touch/click. */
+.btn{transition:transform .2s ease,box-shadow .2s ease}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,26,23,.18)}
+.btn:active:not(:disabled){transform:translateY(0) scale(.98)}
+.showcase-eyebrow{display:inline-block;margin:0 0 .75rem}
+.showcase h2{font-size:2rem}
+.showcase-stage{background:#fff;border:1px solid #e3e7e1;border-radius:22px;box-shadow:0 24px 48px rgba(16,26,23,.12);padding:2rem}
+.showcase-screen{display:grid;grid-template-columns:17rem 1fr;gap:2rem;align-items:center}
+.mini-receipt{position:relative;background:#fff;border:1px solid #e3e7e1;border-radius:6px;box-shadow:var(--shadow);padding:1.25rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.85rem;line-height:1.45;color:#101a17}
 .mini-receipt.is-scanning .scan-line{opacity:1;animation:sweep 1.2s ease-in-out infinite}
 .show-stamp{position:absolute;right:-.75rem;bottom:-.75rem;margin:0;padding:.35rem .6rem;background:#e6f4ef;border:1px solid #0e7c66;border-radius:8px;color:#0a5e4e;font-weight:800;font-size:.8rem;transform:rotate(-4deg)}
 .showcase-result{min-width:0}
@@ -141,6 +150,17 @@ a{color:#0a5e4e}
 .cta-band p{color:#c9d4cf;max-width:36rem;margin:0 auto 1.5rem}
 .cta-band .btn{margin:0 .35rem .5rem}
 .c-footer{padding:1.5rem 1rem 2.5rem;text-align:center;color:#6b7a74;font-size:.9rem}
-@media (max-width:61.99rem){.demo-grid{grid-template-columns:1fr}.scene{min-height:29rem}.chips{position:static;display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}.chip{position:static;opacity:0;transform:translateY(8px)}.chip.revealed{opacity:1;transform:translateY(0)}.hero h1{font-size:2.1rem}.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:61.99rem){.demo-grid{grid-template-columns:1fr}.scene{min-height:29rem}
+/* Mobile keeps the chips FLOATING AROUND the receipt — absolute, smaller,
+   overlapping the receipt edges. Never a static stacked row. */
+.chips{position:absolute;inset:0}
+.chip{padding:.35rem .65rem}
+.chip-value{font-size:.8rem}
+.chip-bar{min-width:4.5rem}
+.chip-a{top:5%;left:0}
+.chip-b{top:3%;right:0}
+.chip-c{bottom:24%;left:0}
+.chip-e{bottom:20%;right:0}
+.hero h1{font-size:2.1rem}.stats-grid{grid-template-columns:repeat(3,1fr)}.showcase h2{font-size:1.6rem}.showcase-stage{padding:1.5rem}}
 @media (max-width:48rem){.t-nav{display:none}.hero{padding:2rem 0 3rem}.hero h1{font-size:1.9rem}.scene{min-height:28rem}.s-receipt{width:13.5rem;margin-top:2rem}.receipt{font-size:.75rem;padding:.9rem .8rem 1.1rem}.ring-a-wrap{width:20rem;height:20rem;margin:-10rem 0 0 -10rem}.ring-b-wrap{width:15rem;height:15rem;margin:-7.5rem 0 0 -7.5rem}.section{padding:2.5rem 0}.stats-grid{grid-template-columns:repeat(2,1fr)}.showcase-screen{grid-template-columns:1fr}.showcase-stage{padding:1.25rem}}
 @media (prefers-reduced-motion:reduce){.receipt,.scan-line,.chip{animation:none!important}.s-receipt{transform:none!important}.tilt-card,.d-glimpse,.chip,.meter-fill,.extract-progress span,.extracted>div{transition:none!important}.d-glimpse{transform:none}}

@@ -22,9 +22,17 @@ import { RouterLink } from '@angular/router';
  * 24 Nov 2026, 18:42). The scan makes it explicit the software is
  * READING: each field is announced as it is read off the receipt, in
  * order — Shop, Date, Total, VAT, Category, Filed to — then the receipt
- * is filed automatically. The showcase below the hero plays the whole
- * process (scan → read → categorise → file → search) as a silent loop.
+ * is filed automatically. The scan LOOPS on its own (hold the filed state
+ * a few seconds, then replay) — a visitor never has to click "Scan
+ * again". The showcase below the hero plays the whole process
+ * (scan → read → categorise → file → search) as a silent loop.
  * With reduced motion both animations skip straight to the filed state.
+ *
+ * The scene is 3D INTERACTIVE, not just animated: the receipt tilts with
+ * the mouse on desktop and with the phone's gyro on mobile (iOS asks for
+ * motion permission from a tap on the scene), and the background grid,
+ * orbit rings, receipt, chips and HUD move at different rates with the
+ * pointer (parallax depth). Chips lift and glow on hover/touch.
  */
 @Component({
   imports: [RouterLink],
@@ -41,6 +49,10 @@ export class Landing implements AfterViewInit, OnDestroy {
   );
   protected readonly rx = signal(-8);
   protected readonly ry = signal(10);
+  // Pointer position over the scene (-0.5..0.5 each axis) — drives the
+  // parallax layers (grid floor, orbit rings, HUD) at different rates.
+  protected readonly px = signal(0);
+  protected readonly py = signal(0);
   protected readonly dashboardFlat = signal(false);
   protected readonly query = signal('');
   protected readonly filter = signal('All');
@@ -143,12 +155,21 @@ export class Landing implements AfterViewInit, OnDestroy {
       o.observe(showcaseEl);
       this.observers.push(o);
     }
+    // Device tilt (phone gyro) drives the same 3D tilt as the mouse.
+    // On iOS the listener only fires after the user grants motion
+    // permission — enableGyro() requests it from a tap on the scene.
+    if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
+      window.addEventListener('deviceorientation', this.onDeviceOrientation);
+    }
   }
 
   ngOnDestroy(): void {
     this.observers.forEach((o) => o.disconnect());
     this.timers.forEach((t) => clearTimeout(t));
     this.showcaseTimers.forEach((t) => clearTimeout(t));
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('deviceorientation', this.onDeviceOrientation);
+    }
   }
 
   /** Hero button: scroll to the demo and run the scan. */
@@ -207,12 +228,45 @@ export class Landing implements AfterViewInit, OnDestroy {
     const py = (event.clientY - r.top) / r.height - 0.5;
     this.ry.set(Math.round(10 + px * 16));
     this.rx.set(Math.round(-8 - py * 12));
+    this.px.set(Math.round(px * 100) / 100);
+    this.py.set(Math.round(py * 100) / 100);
   }
 
   protected resetTilt(): void {
     this.rx.set(-8);
     this.ry.set(10);
+    this.px.set(0);
+    this.py.set(0);
   }
+
+  /**
+   * Ask iOS for motion permission from a tap on the scene (a user
+   * gesture is required). No-op on desktop and on Android, where the
+   * deviceorientation listener just works once added.
+   */
+  protected enableGyro(): void {
+    const doe = (
+      window as unknown as {
+        DeviceOrientationEvent?: { requestPermission?: () => Promise<string> };
+      }
+    ).DeviceOrientationEvent;
+    if (typeof doe?.requestPermission === 'function') {
+      doe.requestPermission().catch(() => undefined);
+    }
+  }
+
+  /** Phone gyro tilt — the mobile equivalent of onTilt. */
+  private readonly onDeviceOrientation = (event: DeviceOrientationEvent): void => {
+    if (this.reducedMotion() || event.gamma === null || event.beta === null) {
+      return;
+    }
+    const gamma = Math.max(-30, Math.min(30, event.gamma));
+    const beta = Math.max(25, Math.min(65, event.beta));
+    this.ry.set(Math.round(10 + gamma * 0.4));
+    this.rx.set(Math.round(-8 - (beta - 45) * 0.35));
+    this.px.set(Math.round((gamma / 30) * 50) / 100);
+    this.py.set(Math.round(((beta - 45) / 20) * 50) / 100);
+  };
 
   protected onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
@@ -227,6 +281,14 @@ export class Landing implements AfterViewInit, OnDestroy {
     this.scanning.set(false);
     this.done.set(true);
     this.status.set('Done. Filed and searchable — try searching "Tesco" in the dashboard below.');
+    // The demo loops on its own — a visitor never has to click "Scan
+    // again". Hold the filed state a few seconds, then replay forever.
+    // Reduced motion shows the filed state once and stops. A manual
+    // replay (the button) clears the pending loop timer via scan(), so
+    // there is only ever one loop chain running.
+    if (!this.reducedMotion()) {
+      this.later(4500, () => this.scan());
+    }
   }
 
   private later(ms: number, fn: () => void): void {

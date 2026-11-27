@@ -45,15 +45,18 @@
 
         <div class="col-lg-6">
           <figure class="s-scene" id="demo" #demo aria-labelledby="demo-heading">
-            <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
+            <figcaption id="demo-heading" class="demo-title">Watch me scan&nbsp;<span class="pill-label">Interactive preview — sample data</span></figcaption>
             <div class="demo-grid">
               <div
                 class="scene"
                 #scene
                 [class.is-scanning]="scanning()"
                 [class.is-done]="done()"
+                [style.--px]="px()"
+                [style.--py]="py()"
                 (mousemove)="onTilt($event)"
                 (mouseleave)="resetTilt()"
+                (pointerdown)="enableGyro()"
               >
                 <div class="grid-floor" aria-hidden="true"></div>
                 <div class="orbit-wrap ring-a-wrap" aria-hidden="true"><div class="orbit-ring ring-a"></div></div>
@@ -153,7 +156,10 @@
                 }
               </button>
             </div>
-            <div class="hud">
+            <div
+              class="hud"
+              [style.transform]="'perspective(1000px) rotateX(' + (rx() * 0.2) + 'deg) rotateY(' + (ry() * 0.2) + 'deg)'"
+            >
               <div class="hud-row">
                 <span class="hud-eng">OCR ENGINE · TESSERACT · CPU-ONLY</span>
                 <span class="hud-st">
@@ -178,10 +184,12 @@
     </div>
   </section>
 
-  <!-- Showcase: the whole process, playing like a video -->
+  <!-- Showcase: the whole process, playing like a video — right after
+       the hero, big and impossible to miss. -->
   <section class="section showcase" id="showcase" aria-labelledby="showcase-heading">
     <div class="container">
-      <h2 id="showcase-heading">Watch the process, end to end</h2>
+      <p class="pill-label showcase-eyebrow">See it in action — the real flow, playing live</p>
+      <h2 id="showcase-heading">Watch it work — paper to searchable in seconds</h2>
       <p class="section-sub">From paper to searchable in seconds — no typing, no filing cabinet.</p>
       <div class="showcase-stage" #showcase>
         <div class="showcase-screen">
@@ -276,7 +284,7 @@
       <p class="section-sub">Sign in and your dashboard shows the state of every document you own.</p>
       <div class="d-glimpse" #glimpse [class.flat]="dashboardFlat()">
         <div class="g-head">
-          <p class="g-title">Example dashboard <span class="pill-label">Sample data</span></p>
+          <p class="g-title">Example dashboard&nbsp;<span class="pill-label">Sample data</span></p>
           <label class="g-search" for="landing-search">
             <span class="visually-hidden">Search sample documents</span>
             <input
@@ -358,7 +366,7 @@
   <!-- Final call to action -->
   <section class="cta-band" aria-labelledby="cta-heading">
     <div class="container">
-      <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
+      <h2 id="cta-heading">Start filing in&nbsp;<span class="hero-accent">seconds.</span></h2>
       <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
       <p>
         <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>

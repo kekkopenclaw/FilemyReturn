@@ -10,15 +10,11 @@ import { AuditLog } from './features/audit/audit-log/audit-log';
 import { Dashboard } from './features/dashboard/dashboard';
 import { DocumentList } from './features/documents/document-list/document-list';
 import { WorkspaceList } from './features/workspaces/workspace-list/workspace-list';
-import { Futuristic } from './features/futuristic/futuristic';
 import { AppShell } from './shared/app-shell/app-shell';
 
 export const routes: Routes = [
   // Public home page: signed-in users are bounced to /dashboard by the guard.
   { path: '', component: Landing, canActivate: [landingGuard] },
-  // Public concept page: the futuristic 3D look, on cream, for review.
-  // Separate route on purpose — it does not replace the landing until approved.
-  { path: 'concept', component: Futuristic },
   { path: 'login', component: Login },
   { path: 'register', component: Register },
   // Public on purpose: the first-login flow (MustChangePassword) has no
