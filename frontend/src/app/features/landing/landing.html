@@ -42,7 +42,7 @@
       <!-- Interactive scan demo: a sample Tesco receipt. The scan line
            sweeps over it, then the extracted fields appear one by one. -->
       <figure class="scan-demo" id="demo" #demo aria-labelledby="demo-heading">
-        <figcaption id="demo-heading" class="demo-title">Watch me scan</figcaption>
+        <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
         <div class="demo-stage" [class.is-scanning]="scanning()" [class.is-done]="done()">
           <div class="receipt" aria-hidden="true">
             <p class="receipt-shop">TESCO</p>
@@ -59,27 +59,30 @@
             <p class="receipt-total"><span>Total</span><span>&pound;14.85</span></p>
             <div class="scan-line" aria-hidden="true"></div>
           </div>
-          <p class="demo-status" role="status">{{ status() }}</p>
-          <dl class="extracted">
-            <div [class.revealed]="revealed() >= 1">
-              <dt>Shop</dt>
-              <dd>TESCO <span class="tick" aria-hidden="true">&#10003;</span></dd>
-            </div>
-            <div [class.revealed]="revealed() >= 2">
-              <dt>Date</dt>
-              <dd>24 November 2026 <span class="tick" aria-hidden="true">&#10003;</span></dd>
-            </div>
-            <div [class.revealed]="revealed() >= 3">
-              <dt>Total</dt>
-              <dd>&pound;14.85 <span class="tick" aria-hidden="true">&#10003;</span></dd>
-            </div>
-            <div [class.revealed]="revealed() >= 4">
-              <dt>Category</dt>
-              <dd>Groceries <span class="tick" aria-hidden="true">&#10003;</span></dd>
-            </div>
-          </dl>
+          <div class="demo-divider" aria-hidden="true"></div>
+          <div class="demo-extracted">
+            <p class="demo-status" role="status">{{ status() }}</p>
+            <dl class="extracted">
+              <div [class.revealed]="revealed() >= 1">
+                <dt>Shop</dt>
+                <dd>TESCO <span class="tick" aria-hidden="true">&#10003;</span></dd>
+              </div>
+              <div [class.revealed]="revealed() >= 2">
+                <dt>Date</dt>
+                <dd>24 November 2026 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+              </div>
+              <div [class.revealed]="revealed() >= 3">
+                <dt>Total</dt>
+                <dd>&pound;14.85 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+              </div>
+              <div [class.revealed]="revealed() >= 4">
+                <dt>Category</dt>
+                <dd>Groceries <span class="tick" aria-hidden="true">&#10003;</span></dd>
+              </div>
+            </dl>
+          </div>
         </div>
-        <button class="btn btn-primary btn-block" type="button" (click)="scan()" [disabled]="scanning()">
+        <button class="btn btn-accent btn-block" type="button" (click)="scan()" [disabled]="scanning()">
           @if (scanning()) {
             Scanning…
           } @else if (done()) {
@@ -113,6 +116,11 @@
         <h3>Filed &amp; searchable</h3>
         <p>It lands in your workspace, organised and ready. Search &ldquo;plumber&rdquo; and find it in seconds.</p>
       </li>
+      <li>
+        <span class="step-number" aria-hidden="true">4</span>
+        <h3>Share it safely</h3>
+        <p>Workspaces and roles decide who can see, edit or manage each document — with a full audit trail.</p>
+      </li>
     </ol>
   </section>
 
@@ -120,16 +128,24 @@
   <section class="section section-muted" id="dashboard" aria-labelledby="dashboard-heading">
     <h2 id="dashboard-heading">Your archive, at a glance</h2>
     <p class="section-sub">Sign in and your dashboard shows the state of every document you own.</p>
-    <div class="dashboard-preview" aria-label="Example dashboard">
-      <div class="preview-stat"><span class="preview-value">128</span><span class="preview-label">Total documents</span></div>
-      <div class="preview-stat"><span class="preview-value">121</span><span class="preview-label">Ready</span></div>
-      <div class="preview-stat"><span class="preview-value">4</span><span class="preview-label">Processing</span></div>
-      <div class="preview-stat"><span class="preview-value">3</span><span class="preview-label">Awaiting OCR</span></div>
-      <div class="preview-stat"><span class="preview-value">2</span><span class="preview-label">Members</span></div>
-      <div class="preview-stat"><span class="preview-value">6</span><span class="preview-label">Archives</span></div>
+    <div class="dashboard-shell" aria-label="Example dashboard">
+      <p class="filter-chips" aria-label="Example filters">
+        <span class="filter-chip active">All documents</span>
+        <span class="filter-chip">Ready</span>
+        <span class="filter-chip">Processing</span>
+        <span class="filter-chip">Awaiting OCR</span>
+      </p>
+      <div class="dashboard-preview">
+        <div class="preview-stat"><span class="preview-value">128</span><span class="preview-label">Total documents</span></div>
+        <div class="preview-stat"><span class="preview-value">121</span><span class="preview-label">Ready</span></div>
+        <div class="preview-stat"><span class="preview-value">4</span><span class="preview-label">Processing</span></div>
+        <div class="preview-stat"><span class="preview-value">3</span><span class="preview-label">Awaiting OCR</span></div>
+        <div class="preview-stat"><span class="preview-value">2</span><span class="preview-label">Members</span></div>
+        <div class="preview-stat"><span class="preview-value">6</span><span class="preview-label">Archives</span></div>
+      </div>
+      <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
+      <p><a class="btn btn-primary" routerLink="/register">Create your archive</a></p>
     </div>
-    <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
-    <p><a class="btn btn-primary" routerLink="/register">Create your archive</a></p>
   </section>
 
   <!-- Security -->
@@ -152,13 +168,15 @@
   </section>
 
   <!-- Final call to action -->
-  <section class="cta" aria-labelledby="cta-heading">
-    <h2 id="cta-heading">Start filing in seconds.</h2>
-    <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
-    <p>
-      <a class="btn btn-primary btn-large" routerLink="/register">Get started</a>
-      <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
-    </p>
+  <section class="cta-band" aria-labelledby="cta-heading">
+    <div class="cta">
+      <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
+      <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
+      <p>
+        <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>
+        <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
+      </p>
+    </div>
   </section>
 </main>
 
