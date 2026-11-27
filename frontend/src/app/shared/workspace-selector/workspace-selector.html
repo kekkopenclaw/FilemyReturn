@@ -1,0 +1,14 @@
+@if (workspaceService.workspaces().length > 0) {
+  <label class="workspace-picker">
+    <span class="visually-hidden">Select workspace</span>
+    <select
+      aria-label="Select workspace"
+      [value]="workspaceService.selectedWorkspaceId() ?? ''"
+      (change)="onChange($event)"
+    >
+      @for (workspace of workspaceService.workspaces(); track workspace.id) {
+        <option [value]="workspace.id">{{ workspace.name }}</option>
+      }
+    </select>
+  </label>
+}

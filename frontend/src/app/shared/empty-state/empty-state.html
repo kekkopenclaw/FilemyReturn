@@ -1,0 +1,7 @@
+<div class="empty-state" role="status">
+  <p class="empty-message">{{ message() }}</p>
+  @if (detail()) {
+    <p class="empty-detail">{{ detail() }}</p>
+  }
+  <ng-content />
+</div>

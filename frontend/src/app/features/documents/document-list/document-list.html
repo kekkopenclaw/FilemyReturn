@@ -1,0 +1,50 @@
+<h1>Documents</h1>
+<p class="page-intro">
+  @if (workspaceService.selectedWorkspace(); as workspace) {
+    Documents in <strong>{{ workspace.name }}</strong>.
+  } @else {
+    Select a workspace to see its documents.
+  }
+</p>
+
+@if (workspaceService.workspaces().length === 0 && !workspaceService.loading()) {
+  <app-empty-state
+    message="No workspaces yet"
+    detail="Create a workspace first — documents belong to a workspace."
+  />
+} @else if (loading()) {
+  <app-loading-spinner />
+} @else if (error()) {
+  <p class="error-banner" role="alert">{{ error() }}</p>
+} @else if (documents().length === 0) {
+  <app-empty-state
+    message="No documents yet — uploads arrive in Phase 2"
+    detail="Documents uploaded in Phase 2 will be listed here with their processing status."
+  />
+} @else {
+  <div class="table-wrap">
+    <table class="doc-table">
+      <caption class="visually-hidden">Documents in the selected workspace</caption>
+      <thead>
+        <tr>
+          <th scope="col">File name</th>
+          <th scope="col">Type</th>
+          <th scope="col">Size</th>
+          <th scope="col">Status</th>
+          <th scope="col">Uploaded</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (doc of documents(); track doc.id) {
+          <tr>
+            <td class="doc-name">{{ doc.originalFileName }}</td>
+            <td>{{ doc.mimeType }}</td>
+            <td>{{ formatBytes(doc.fileSizeBytes) }}</td>
+            <td><span class="badge {{ statusClass(doc.status) }}">{{ statusLabel(doc.status) }}</span></td>
+            <td>{{ doc.createdAt | date: 'medium' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

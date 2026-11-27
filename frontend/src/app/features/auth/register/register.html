@@ -1,0 +1,80 @@
+<main class="auth-page">
+  <section class="auth-card" aria-labelledby="register-heading">
+    <h1 id="register-heading">Create your account</h1>
+    <p class="auth-sub">One account, all your workspaces.</p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      @if (serverError()) {
+        <p class="error-banner" role="alert">{{ serverError() }}</p>
+      }
+
+      <div class="field">
+        <label for="register-name">Display name</label>
+        <input
+          id="register-name"
+          type="text"
+          formControlName="displayName"
+          autocomplete="name"
+          [attr.aria-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched"
+        />
+        @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+          <p class="field-error">Display name is required.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-email">Email</label>
+        <input
+          id="register-email"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <p class="field-error">Enter a valid email address.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-password">Password</label>
+        <input
+          id="register-password"
+          type="password"
+          formControlName="password"
+          autocomplete="new-password"
+          aria-describedby="password-hint"
+          [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
+        />
+        <p class="field-hint" id="password-hint">
+          At least 12 characters. Use a unique password you do not reuse elsewhere.
+        </p>
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p class="field-error">Password must be at least 12 characters.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-confirm">Confirm password</label>
+        <input
+          id="register-confirm"
+          type="password"
+          formControlName="confirmPassword"
+          autocomplete="new-password"
+          [attr.aria-invalid]="form.hasError('passwordsMismatch') && form.controls.confirmPassword.touched"
+        />
+        @if (form.hasError('passwordsMismatch') && form.controls.confirmPassword.touched) {
+          <p class="field-error">Passwords do not match.</p>
+        }
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="loading()">
+        {{ loading() ? 'Creating account…' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      Already have an account? <a routerLink="/login">Sign in</a>
+    </p>
+  </section>
+</main>

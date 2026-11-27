@@ -1,0 +1,33 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<div class="shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/dashboard" aria-label="DocDigit home">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand-name">DocDigit</span>
+    </a>
+    <div class="topbar-right">
+      <app-workspace-selector />
+      @if (auth.currentUser(); as user) {
+        <span class="user-email" title="{{ user.email }}">{{ user.displayName }}</span>
+      }
+      <button type="button" class="btn btn-ghost" (click)="logout()">
+        Sign out
+      </button>
+    </div>
+  </header>
+
+  <div class="shell-body">
+    <nav class="sidebar" aria-label="Primary">
+      <a routerLink="/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">Dashboard</a>
+      <a routerLink="/workspaces" routerLinkActive="active" ariaCurrentWhenActive="page">Workspaces</a>
+      <a routerLink="/documents" routerLinkActive="active" ariaCurrentWhenActive="page">Documents</a>
+    </nav>
+
+    <main id="main-content" class="content" tabindex="-1">
+      @if (workspaceService.loading()) {
+        <app-loading-spinner />
+      }
+      <router-outlet />
+    </main>
+  </div>
+</div>

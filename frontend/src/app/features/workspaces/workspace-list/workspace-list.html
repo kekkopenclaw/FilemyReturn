@@ -1,0 +1,64 @@
+<h1>Workspaces</h1>
+<p class="page-intro">
+  Workspaces keep each organisation's documents, archives and audit trail
+  separate.
+</p>
+
+<section class="create-card" aria-labelledby="create-heading">
+  <h2 id="create-heading">Create a workspace</h2>
+  <form [formGroup]="form" (ngSubmit)="onCreate()" novalidate>
+    @if (createError()) {
+      <p class="error-banner" role="alert">{{ createError() }}</p>
+    }
+    @if (createSuccess()) {
+      <p class="success-banner" role="status">Workspace created.</p>
+    }
+    <div class="field">
+      <label for="workspace-name">Name</label>
+      <input
+        id="workspace-name"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched"
+      />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <p class="field-error">A workspace name is required.</p>
+      }
+    </div>
+    <div class="field">
+      <label for="workspace-description">Description <span class="optional">(optional)</span></label>
+      <textarea id="workspace-description" formControlName="description" rows="2"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary" [disabled]="creating()">
+      {{ creating() ? 'Creating…' : 'Create workspace' }}
+    </button>
+  </form>
+</section>
+
+<section aria-labelledby="list-heading">
+  <h2 id="list-heading">Your workspaces</h2>
+  @if (workspaceService.loading()) {
+    <app-loading-spinner />
+  } @else if (workspaceService.workspaces().length === 0) {
+    <app-empty-state
+      message="No workspaces yet"
+      detail="Use the form above to create your first workspace."
+    />
+  } @else {
+    <ul class="workspace-list">
+      @for (workspace of workspaceService.workspaces(); track workspace.id) {
+        <li class="workspace-card">
+          <div class="workspace-head">
+            <span class="workspace-name">{{ workspace.name }}</span>
+            <span class="badge">{{ workspace.role }}</span>
+          </div>
+          @if (workspace.description) {
+            <p class="workspace-desc">{{ workspace.description }}</p>
+          }
+          <p class="workspace-meta">Created {{ workspace.createdAt | date: 'mediumDate' }}</p>
+        </li>
+      }
+    </ul>
+  }
+</section>

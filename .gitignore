@@ -1,0 +1,24 @@
+# DocuArchive .gitignore — never commit build output, secrets, or local data.
+# Build output
+bin/
+obj/
+dist/
+node_modules/
+.angular/
+# Local data / secrets
+.env
+*.db
+*.db-shm
+*.db-wal
+storage/
+docuarchive.db
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+# .NET user secrets
+**/Properties/launchSettings.json

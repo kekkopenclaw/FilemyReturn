@@ -1,0 +1,51 @@
+# DocuArchive — local development (docker compose)
+# One command:  docker compose up --build
+# API (serves Angular from wwwroot) on http://localhost:5000, Swagger at /swagger (dev only).
+# SQLite by default (no paid DB). Postgres is included for testing the production
+# provider: set Database__Provider=Postgres and ConnectionStrings__Default accordingly.
+# Copy .env.example to .env and set Jwt__Key (32+ chars) + ADMIN_PASSWORD (12+ chars).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: ${DATABASE_PROVIDER:-Sqlite}
+      ConnectionStrings__Default: ${CONNECTION_STRING:-Data Source=/app/data/docuarchive.db}
+      Jwt__Key: ${JWT_KEY:-DEV_ONLY_PLACEHOLDER_KEY_CHANGE_ME_via_Jwt__Key_env_var_0123456789abcdef}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      Frontend__Origin: http://localhost:4200
+      Storage__RootPath: /app/data/storage
+    volumes:
+      - docuarchive-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: docuarchive
+      POSTGRES_PASSWORD: docuarchive-dev-only
+      POSTGRES_DB: docuarchive
+    ports:
+      - "5432:5432"
+    volumes:
+      - docuarchive-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuarchive -d docuarchive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  docuarchive-data:
+  docuarchive-db:
