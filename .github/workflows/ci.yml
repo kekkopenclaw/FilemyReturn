@@ -48,3 +48,14 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npx ng build --configuration production
+
+  # Prove the production image builds on every push. The Render Docker build
+  # failed twice ("Exited with status 1", 10s and 27s) with no usable log from
+  # the Render API — this job is the diagnosable copy of that build. It only
+  # builds the image; it never pushes it anywhere and needs no secrets.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t docuarchive:ci .
