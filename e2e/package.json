@@ -1,0 +1,14 @@
+{
+  "name": "docuarchive-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for DocuArchive. Runs the real app locally (API + built Angular frontend served from the API, the production layout) — never the live site.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "typescript": "~5.9.0"
+  }
+}
