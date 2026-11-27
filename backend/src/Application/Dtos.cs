@@ -40,6 +40,9 @@ public record AddMemberRequest(
     [Required, EmailAddress] string Email,
     [Required] string Role);
 
+/// <summary>Change a member's role (WorkspaceAdmin, ArchiveManager, StandardUser or ReadOnly).</summary>
+public record ChangeMemberRoleRequest([Required] string Role);
+
 public record CreateArchiveRequest(
     [Required, MinLength(1), MaxLength(200)] string Name,
     [MaxLength(1000)] string? Description);
