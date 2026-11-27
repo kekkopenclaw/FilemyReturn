@@ -9,11 +9,29 @@ using DocuArchive.WebApi.Middleware;
 using DocuArchive.Worker;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// SECURITY — do not leak the server banner.
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
+// SECURITY — forwarded headers: Render terminates TLS at its load balancer and forwards
+// the real client IP in X-Forwarded-For. Without this, HttpContext.Connection.RemoteIpAddress
+// is the Render proxy for EVERY request, so the per-IP rate limiting below collapses into
+// one bucket shared by all users (one attacker could exhaust it for everyone, and one
+// user's brute force would count against everyone else). The container is only reachable
+// through Render's routing, so the proxy is trusted: known networks/proxies are cleared
+// and X-Forwarded-For / X-Forwarded-Proto are honoured. Must run before UseRateLimiter.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // DEPLOY (Render etc.): listen on the $PORT env var when set (Render injects it).
 // Validated to 1-65535; when unset, ASP.NET Core defaults apply (launchSettings / 5000).
@@ -138,6 +156,13 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseForwardedHeaders();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+if (!app.Environment.IsDevelopment())
+{
+    // HSTS: Render terminates TLS, so browsers must always use HTTPS for this host.
+    app.UseHsts();
+}
 
 if (app.Environment.IsDevelopment())
 {
