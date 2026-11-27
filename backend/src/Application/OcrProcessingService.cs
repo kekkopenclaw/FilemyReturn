@@ -56,18 +56,22 @@ public class OcrProcessingService
             }
 
             var fields = ReceiptFieldExtractor.Extract(result.Text);
+            var classification = DocumentClassifier.Classify(result.Text, fields.Vendor, fields.Total);
             doc.OcrText = result.Text;
             doc.OcrConfidence = result.Confidence;
             doc.ExtractedVendor = fields.Vendor;
             doc.ExtractedDate = fields.Date;
             doc.ExtractedTotal = fields.Total;
             doc.ExtractedCurrency = fields.Currency;
-            doc.SuggestedCategory = fields.SuggestedCategory;
+            doc.SuggestedCategory = classification.Category;
+            doc.ClassificationConfidence = classification.Confidence;
+            doc.ClassificationReason = classification.Reason;
+            doc.NeedsReview = classification.NeedsReview;
             doc.Status = DocumentStatus.Ready;
             doc.OcrStatus = OcrStatus.Completed;
             await _documents.UpdateAsync(doc, ct);
             await _audit.LogAsync(processedByUserId, workspaceId, "Document.OcrCompleted", "Document", doc.Id.ToString(),
-                $"OCR completed for {doc.OriginalFileName} (vendor: {fields.Vendor ?? "—"}, total: {fields.Currency}{fields.Total?.ToString("0.00") ?? "—"})", ct);
+                $"OCR completed for {doc.OriginalFileName} (vendor: {fields.Vendor ?? "—"}, total: {fields.Currency}{fields.Total?.ToString("0.00") ?? "—"}, category: {classification.Category} {classification.Confidence:0}%{(classification.NeedsReview ? ", needs review" : "")})", ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -105,6 +109,10 @@ public class OcrProcessingService
         doc.ExtractedTotal = null;
         doc.ExtractedCurrency = null;
         doc.SuggestedCategory = null;
+        doc.ClassificationConfidence = null;
+        doc.ClassificationReason = null;
+        doc.NeedsReview = false;
+        doc.ConfirmedCategory = null;
         await _documents.UpdateAsync(doc, ct);
         await _audit.LogAsync(userId, workspaceId, "Document.OcrReprocessRequested", "Document", doc.Id.ToString(),
             doc.OriginalFileName, ct);
@@ -122,5 +130,6 @@ internal static class DocumentDtos
         d.FileSizeBytes, d.MimeType, d.Status.ToString(), d.OcrStatus.ToString(),
         d.CreatedAt, d.CreatedById,
         d.OcrText, d.OcrConfidence, d.ExtractedVendor, d.ExtractedDate,
-        d.ExtractedTotal, d.ExtractedCurrency, d.SuggestedCategory);
+        d.ExtractedTotal, d.ExtractedCurrency, d.SuggestedCategory,
+        d.ClassificationConfidence, d.ClassificationReason, d.NeedsReview, d.ConfirmedCategory);
 }
