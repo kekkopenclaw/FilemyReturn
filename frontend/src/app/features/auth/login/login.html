@@ -1,7 +1,8 @@
 <main class="auth-page">
   <section class="auth-card" aria-labelledby="login-heading">
-    <h1 id="login-heading">Sign in to DocDigit</h1>
-    <p class="auth-sub">Secure document digitisation &amp; archive management.</p>
+    <a class="auth-home" routerLink="/">&larr; Back to home</a>
+    <h1 id="login-heading">Sign in to DocuArchive</h1>
+    <p class="auth-sub">Welcome back — your archive is waiting.</p>
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
       @if (serverError()) {
@@ -45,5 +46,22 @@
     <p class="auth-switch">
       No account yet? <a routerLink="/register">Create an account</a>
     </p>
+  </section>
+
+  <section class="auth-brand" aria-labelledby="brand-heading">
+    <a class="brand" routerLink="/" aria-label="DocuArchive home">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand-name">DocuArchive</span>
+    </a>
+    <h2 id="brand-heading">Lost a receipt again?<br />Scan it. Done.</h2>
+    <p>
+      Your receipts and documents, read, categorised and filed — find
+      anything in seconds when you search.
+    </p>
+    <ul>
+      <li>Scan or upload a receipt</li>
+      <li>Date, shop and amount read for you</li>
+      <li>Filed in your workspace, searchable any time</li>
+    </ul>
   </section>
 </main>

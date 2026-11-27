@@ -1,20 +1,65 @@
-/* Same auth-page styling as the login page. */
 .auth-page {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: var(--color-navy);
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  background: linear-gradient(160deg, var(--color-navy) 0%, #0a1a2e 70%);
+  overflow-x: hidden;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 800;
+}
+
+/* Card: drops in from the top to the centre, then slides left into place,
+   with a 3D tilt that flattens as it lands. Pure CSS, no libraries. */
 .auth-card {
+  align-self: center;
+  justify-self: center;
   width: 100%;
   max-width: 26rem;
-  padding: 2rem;
+  margin: 1.5rem;
+  padding: 2.25rem;
   background: var(--color-surface);
   border-radius: calc(var(--radius) * 2);
-  box-shadow: 0 1rem 2.5rem rgba(2, 6, 23, 0.35);
+  border-top: 4px solid var(--color-accent);
+  box-shadow:
+    0 2rem 4rem rgba(2, 6, 23, 0.5),
+    0 0.5rem 1rem rgba(2, 6, 23, 0.35);
+  transform-style: preserve-3d;
+  animation: card-enter 1.15s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) translateY(-70vh) translateX(24vw) rotateX(16deg) scale(0.94);
+  }
+  45% {
+    opacity: 1;
+    transform: perspective(900px) translateY(0) translateX(24vw) rotateX(0deg) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(900px) translateY(0) translateX(0) rotateX(0deg) scale(1);
+  }
 }
 
 .auth-card h1 {
@@ -22,9 +67,28 @@
   font-size: 1.5rem;
 }
 
+.auth-home {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .auth-sub {
   margin: 0.4rem 0 1.5rem;
   color: var(--color-muted);
+}
+
+.auth-card .field input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  outline: none;
+}
+
+.auth-card .btn-primary {
+  padding: 0.75rem 1.25rem;
+  font-size: 1.02rem;
 }
 
 .auth-switch {
@@ -36,4 +100,102 @@
 .auth-switch a {
   color: var(--color-accent-dark);
   font-weight: 600;
+}
+
+/* Brand panel on the right, fading in once the card has landed. */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: #fff;
+  animation: brand-enter 0.8s ease 0.55s both;
+}
+
+@keyframes brand-enter {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.auth-brand h2 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.auth-brand p {
+  margin: 0;
+  color: #dbe7f3;
+  font-size: 1.05rem;
+  max-width: 26rem;
+}
+
+.auth-brand ul {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-brand li {
+  padding: 0.4rem 0 0.4rem 1.75rem;
+  position: relative;
+  color: #dbe7f3;
+}
+
+.auth-brand li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+  font-weight: 800;
+}
+
+@media (max-width: 48rem) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-brand {
+    order: -1;
+    padding: 1.75rem 1.5rem 0;
+    animation: brand-enter 0.6s ease both;
+  }
+
+  .auth-brand h2 {
+    font-size: 1.5rem;
+  }
+
+  .auth-brand ul {
+    display: none;
+  }
+
+  .auth-card {
+    animation-name: card-enter-mobile;
+    animation-duration: 0.55s;
+  }
+}
+
+@keyframes card-enter-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card,
+  .auth-brand {
+    animation: none;
+  }
 }

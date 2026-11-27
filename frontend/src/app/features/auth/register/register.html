@@ -1,5 +1,6 @@
 <main class="auth-page">
   <section class="auth-card" aria-labelledby="register-heading">
+    <a class="auth-home" routerLink="/">&larr; Back to home</a>
     <h1 id="register-heading">Create your account</h1>
     <p class="auth-sub">One account, all your workspaces.</p>
 
@@ -76,5 +77,22 @@
     <p class="auth-switch">
       Already have an account? <a routerLink="/login">Sign in</a>
     </p>
+  </section>
+
+  <section class="auth-brand" aria-labelledby="brand-heading">
+    <a class="brand" routerLink="/" aria-label="DocuArchive home">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand-name">DocuArchive</span>
+    </a>
+    <h2 id="brand-heading">Your paperwork,<br />finally organised.</h2>
+    <p>
+      One account, all your workspaces. Scan a receipt once and find it in
+      seconds, whenever you need it.
+    </p>
+    <ul>
+      <li>Free to start — no card required</li>
+      <li>Your files stay on your own server</li>
+      <li>Workspaces, roles and a full audit trail</li>
+    </ul>
   </section>
 </main>
