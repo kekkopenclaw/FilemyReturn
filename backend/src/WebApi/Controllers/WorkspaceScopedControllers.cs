@@ -48,8 +48,8 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, CancellationToken ct)
-        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search));
+    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, [FromQuery] bool? needsReview, CancellationToken ct)
+        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search, needsReview));
 
     [HttpGet("{documentId:guid}")]
     public async Task<ActionResult<DocumentDto>> Get(Guid workspaceId, Guid documentId, CancellationToken ct)
@@ -86,6 +86,15 @@ public class DocumentsController : ControllerBase
     [HttpPost("{documentId:guid}/reprocess")]
     public async Task<ActionResult<DocumentDto>> Reprocess(Guid workspaceId, Guid documentId, CancellationToken ct)
         => Ok(await _ocr.ReprocessAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
+
+    /// <summary>
+    /// Human review: confirms or corrects a document's category (Phase 3 classification).
+    /// StandardUser+ only. Body: { "category": "Invoice" }. Clears the review flag.
+    /// Returns 400 for an unknown category.
+    /// </summary>
+    [HttpPost("{documentId:guid}/confirm-category")]
+    public async Task<ActionResult<DocumentDto>> ConfirmCategory(Guid workspaceId, Guid documentId, [FromBody] ConfirmCategoryRequest request, CancellationToken ct)
+        => Ok(await _documents.ConfirmCategoryAsync(ControllerUser.Id(this), workspaceId, documentId, request.Category, ct));
 }
 
 /// <summary>Upload history for a workspace (newest first, with uploader).</summary>
