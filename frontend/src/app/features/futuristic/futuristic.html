@@ -1,0 +1,199 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="c-topbar">
+  <a class="brand" routerLink="/" aria-label="DocuArchive home">
+    <span class="b-mark" aria-hidden="true">D</span>
+    <span class="b-name">DocuArchive</span>
+  </a>
+  <nav class="t-nav" aria-label="Concept page sections">
+    <a href="#demo">Live scan</a>
+    <a href="#how">How it works</a>
+    <a href="#dashboard">Dashboard</a>
+  </nav>
+  <div class="t-actions">
+    <a class="btn btn-ghost" routerLink="/login">Log in</a>
+    <a class="btn btn-primary" routerLink="/register">Get started</a>
+  </div>
+</header>
+
+<main id="main-content">
+  <!-- Hero + 3D scan scene -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="container">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <p class="pill-label">Concept preview — sample data, not the live landing yet</p>
+          <h1 id="hero-heading">
+            The receipt floats.<br />
+            <span class="hero-accent">The software reads it.</span>
+          </h1>
+          <p class="hero-sub">
+            A new look for DocuArchive, built on the same cream theme. Watch a
+            real receipt — The Corner Cafe, &pound;18.40 — float in 3D while a
+            scan beam pulls out the shop, the date and the total.
+          </p>
+          <p class="hero-ctas">
+            <button class="btn btn-accent btn-large" type="button" (click)="watchScan()">Watch it scan</button>
+            <a class="btn btn-primary btn-large" routerLink="/register">Get started — it&rsquo;s free</a>
+          </p>
+          <p>No card required. Your documents stay on your own server.</p>
+        </div>
+
+        <div class="col-lg-6">
+          <figure class="s-scene" id="demo" #demo aria-labelledby="demo-heading">
+            <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Live demo — sample data</span></figcaption>
+            <div
+              class="scene"
+              #scene
+              [class.is-scanning]="scanning()"
+              [class.is-done]="done()"
+              (mousemove)="onTilt($event)"
+              (mouseleave)="resetTilt()"
+            >
+              <div class="grid-floor" aria-hidden="true"></div>
+              <div class="orbit-wrap ring-a-wrap" aria-hidden="true"><div class="orbit-ring ring-a"></div></div>
+              <div class="orbit-wrap ring-b-wrap" aria-hidden="true"><div class="orbit-ring ring-b"></div></div>
+              <div
+                class="s-receipt"
+                [style.--rx]="rx() + 'deg'"
+                [style.--ry]="ry() + 'deg'"
+              >
+                <div class="receipt" aria-hidden="true">
+                  <p class="r-shop">THE CORNER CAFE</p>
+                  <p class="r-branch">Corner Cafe · London</p>
+                  <p class="r-date">24 November 2026</p>
+                  <ul class="r-items">
+                    <li><span>Flat White</span><span>&pound;3.40</span></li>
+                    <li><span>Cappuccino</span><span>&pound;3.20</span></li>
+                    <li><span>Butter Croissant</span><span>&pound;2.80</span></li>
+                    <li><span>Orange Juice</span><span>&pound;3.00</span></li>
+                    <li><span>Toasted Sandwich</span><span>&pound;6.00</span></li>
+                  </ul>
+                  <p class="r-total"><span>Total</span><span>&pound;18.40</span></p>
+                  <div class="scan-line" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="chips" aria-label="Extracted from the receipt">
+                <span class="chip chip-a" [class.revealed]="revealed() >= 1"><span class="chip-label">Vendor</span><span class="chip-value">THE CORNER CAFE</span></span>
+                <span class="chip chip-b" [class.revealed]="revealed() >= 2"><span class="chip-label">Date</span><span class="chip-value">24 Nov 2026</span></span>
+                <span class="chip chip-c" [class.revealed]="revealed() >= 3"><span class="chip-label">Total</span><span class="chip-value">&pound;18.40</span></span>
+                <span class="chip chip-d" [class.revealed]="revealed() >= 4"><span class="chip-label">Confidence</span><span class="chip-value">95.7%</span></span>
+              </div>
+            </div>
+            <div class="hud" role="status">
+              <div class="hud-row">
+                <span class="hud-eng">OCR ENGINE · TESSERACT · CPU-ONLY</span>
+                <span class="hud-st">
+                  @if (scanning()) {
+                    Scanning…
+                  } @else if (done()) {
+                    Filed to archive ✓
+                  } @else {
+                    Ready
+                  }
+                </span>
+              </div>
+              <p class="hud-status">{{ status() }}</p>
+              <div class="meter" aria-hidden="true">
+                <span class="meter-fill" [style.width.%]="revealed() >= 4 ? 95.7 : revealed() * 20"></span>
+              </div>
+              <p class="hud-conf">Confidence {{ revealed() >= 4 ? '95.7%' : '—' }}</p>
+            </div>
+            <button class="btn btn-accent btn-block" type="button" (click)="scan()" [disabled]="scanning()">
+              @if (scanning()) {
+                Scanning…
+              } @else if (done()) {
+                Scan it again
+              } @else {
+                Scan this receipt
+              }
+            </button>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works: 3D tilt cards -->
+  <section class="section" id="how" aria-labelledby="how-heading">
+    <div class="container">
+      <h2 id="how-heading">How it works</h2>
+      <p class="section-sub">Three steps. No filing cabinet, no spreadsheet, no lost paper.</p>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">1</span>
+            <h3>Scan</h3>
+            <p>Upload a receipt or document, or snap a photo of it. Duplicates are spotted automatically.</p>
+          </article>
+        </div>
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">2</span>
+            <h3>The software reads it</h3>
+            <p>Date, shop, amount and category are pulled out of the document for you — no typing.</p>
+          </article>
+        </div>
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">3</span>
+            <h3>Find it in seconds</h3>
+            <p>It lands in your workspace, organised and ready. Search &ldquo;plumber&rdquo; and find it in seconds.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard glimpse: tilts flat on scroll, working search -->
+  <section class="section section-muted" id="dashboard" aria-labelledby="dashboard-heading">
+    <div class="container">
+      <h2 id="dashboard-heading">Your archive, at a glance</h2>
+      <p class="section-sub">Try the search — it filters the sample documents live.</p>
+      <div class="d-glimpse" #glimpse [class.flat]="dashboardFlat()">
+        <div class="g-head">
+          <p class="g-title">Example dashboard <span class="pill-label">Sample data</span></p>
+          <label class="g-search" for="concept-search">
+            <span class="visually-hidden">Search sample documents</span>
+            <input
+              id="concept-search"
+              class="form-control"
+              type="search"
+              placeholder="Search documents… try “tesco”"
+              (input)="onSearch($event)"
+            />
+          </label>
+        </div>
+        <ul class="doc-list">
+          @for (doc of filteredDocs(); track doc.name) {
+            <li class="doc-row">
+              <span class="doc-name">{{ doc.name }}</span>
+              <span class="doc-kind">{{ doc.kind }} · {{ doc.date }}</span>
+              <span class="doc-amount">{{ doc.amount }}</span>
+              <span class="badge" [class.badge-success]="doc.state === 'Ready'" [class.badge-warning]="doc.state === 'Awaiting OCR'" [class.badge-info]="doc.state === 'Processing'">{{ doc.state }}</span>
+            </li>
+          } @empty {
+            <li class="doc-empty">No sample documents match “{{ query() }}”.</li>
+          }
+        </ul>
+        <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final call to action -->
+  <section class="cta-band" aria-labelledby="cta-heading">
+    <div class="container">
+      <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
+      <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
+      <p>
+        <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>
+        <a class="btn btn-primary btn-large" routerLink="/">Back to the current site</a>
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="c-footer">
+  <p>DocuArchive concept — a preview of a possible new look. The live site stays on the current cream landing until this is approved.</p>
+</footer>
