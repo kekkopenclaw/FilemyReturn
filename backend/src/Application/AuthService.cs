@@ -55,6 +55,18 @@ public class AuthService
                 throw new LockedOutException();
             case SignInOutcome.InvalidCredentials:
             case SignInOutcome.NotFound:
+                // Audit failed logins when the account exists (wrong password). Unknown
+                // emails are not audited: the audit row is keyed by user id, and logging
+                // attacker-supplied strings as user ids would pollute the audit trail.
+                // The response stays generic either way — existence is never leaked.
+                var existing = outcome == SignInOutcome.InvalidCredentials
+                    ? await _users.FindByEmailAsync(request.Email.Trim(), ct)
+                    : null;
+                if (existing is not null)
+                {
+                    try { await _audit.LogAsync(existing.Id, null, "Auth.LoginFailed", "User", existing.Id, "Failed login attempt (wrong password).", ct); }
+                    catch { /* best-effort audit only — the 401 stands regardless */ }
+                }
                 throw new UnauthorizedException("Invalid email or password.");
         }
         var user = await _users.FindByEmailAsync(request.Email.Trim(), ct)
@@ -64,11 +76,28 @@ public class AuthService
         return await IssueTokensAsync(user, ct);
     }
 
-    /// <summary>Rotates a refresh token: the presented token is revoked and a new pair is issued. Unknown/expired/revoked tokens return 401.</summary>
+    /// <summary>
+    /// Rotates a refresh token: the presented token is revoked and a new pair is issued. Unknown/expired tokens return 401.
+    /// REUSE DETECTION: presenting a token that was already revoked (i.e. already rotated) means the
+    /// token was stolen and is being replayed — the whole token family is revoked immediately so no
+    /// further access token can be minted from any stolen copy, and the attempt is audited. A merely
+    /// expired (never revoked) token is a normal stale client and only gets a 401.
+    /// </summary>
     public async Task<AuthResponse> RefreshAsync(RefreshRequest request, CancellationToken ct = default)
     {
         var stored = await _refreshTokens.GetByHashAsync(_jwt.HashToken(request.RefreshToken), ct);
-        if (stored is null || !stored.IsActive) throw new UnauthorizedException("Invalid or expired refresh token.");
+        if (stored is null) throw new UnauthorizedException("Invalid or expired refresh token.");
+        if (!stored.IsActive)
+        {
+            if (stored.RevokedAt is not null)
+            {
+                // Reuse of a rotated token: assume theft, kill the whole family.
+                await _refreshTokens.RevokeAllForUserAsync(stored.UserId, ct);
+                try { await _audit.LogAsync(stored.UserId, null, "Auth.RefreshTokenReuse", "User", stored.UserId, "A revoked refresh token was presented again; all refresh tokens for the account were revoked.", ct); }
+                catch { /* best-effort audit only — the revocation stands regardless */ }
+            }
+            throw new UnauthorizedException("Invalid or expired refresh token.");
+        }
         var user = await _users.FindByIdAsync(stored.UserId, ct)
             ?? throw new UnauthorizedException("Invalid or expired refresh token.");
         await _refreshTokens.RevokeAsync(stored, ct);
@@ -83,29 +112,37 @@ public class AuthService
         if (stored is not null && stored.IsActive) await _refreshTokens.RevokeAsync(stored, ct);
     }
 
-    /// <summary>Changes the current user's password.</summary>
+    /// <summary>
+    /// Changes the current user's password. A successful change revokes ALL refresh tokens for
+    /// the account: a token stolen before the change must not survive it (the 15-minute access
+    /// tokens already issued expire on their own and cannot be minted anew afterwards).
+    /// </summary>
     public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct = default)
     {
         var ok = await _users.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, ct);
         if (!ok) throw new ValidationException("Current password is incorrect or the new password does not meet the policy.");
+        await _refreshTokens.RevokeAllForUserAsync(userId, ct);
         await _audit.LogAsync(userId, null, "Auth.PasswordChanged", "User", userId, null, ct);
     }
 
     /// <summary>
     /// Changes a password without a login session. Only allowed for accounts flagged
     /// <c>MustChangePassword</c> (e.g. the seeded admin on first login): the caller must still
-    /// prove the current password. Any other account gets 403.
+    /// prove the current password. Every failure path returns the same generic error so the
+    /// endpoint cannot be used to enumerate accounts or to tell which accounts are flagged
+    /// MustChangePassword. A successful change revokes all refresh tokens (see
+    /// <see cref="ChangePasswordAsync"/>).
     /// </summary>
     public async Task ChangePasswordWithoutLoginAsync(ChangePasswordRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Email)) throw new ValidationException("Email is required when changing a password without logging in.");
-        var user = await _users.FindByEmailAsync(request.Email.Trim(), ct)
-            ?? throw new NotFoundException("User not found.");
-        if (!user.MustChangePassword) throw new ForbiddenException("Password change without login is only allowed when a password change is required.");
+        var user = await _users.FindByEmailAsync(request.Email.Trim(), ct);
+        if (user is null || !user.MustChangePassword) throw new UnauthorizedException("Invalid email or password.");
         var outcome = await _users.CheckPasswordAsync(request.Email.Trim(), request.CurrentPassword, ct);
-        if (outcome != SignInOutcome.Success) throw new UnauthorizedException("Current password is incorrect.");
+        if (outcome != SignInOutcome.Success) throw new UnauthorizedException("Invalid email or password.");
         var ok = await _users.ChangePasswordAsync(user.Id, request.CurrentPassword, request.NewPassword, ct);
         if (!ok) throw new ValidationException("The new password does not meet the policy.");
+        await _refreshTokens.RevokeAllForUserAsync(user.Id, ct);
         await _audit.LogAsync(user.Id, null, "Auth.PasswordChanged", "User", user.Id, "First-login password change", ct);
     }
 
