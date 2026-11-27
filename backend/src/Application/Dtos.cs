@@ -115,6 +115,20 @@ public record DashboardDto(
 /// <summary>Confirm or correct a document's category (human review queue).</summary>
 public record ConfirmCategoryRequest([Required] string Category);
 
+/// <summary>
+/// Edit a document's extracted metadata (Phase 4). Full-form PUT semantics:
+/// the client always sends every field; null clears vendor, date or total.
+/// Category null clears the human-confirmed category (the suggestion stays);
+/// a known category counts as confirmed, exactly like ConfirmCategory.
+/// File name is always sent — a document always has one.
+/// </summary>
+public record UpdateDocumentMetadataRequest(
+    [Required, MinLength(1), MaxLength(255)] string OriginalFileName,
+    [MaxLength(200)] string? ExtractedVendor,
+    DateTime? ExtractedDate,
+    decimal? ExtractedTotal,
+    [MaxLength(64)] string? Category);
+
 /// <summary>One entry of a workspace's upload history (Phase 2).</summary>
 public record UploadHistoryDto(
     Guid DocumentId, Guid WorkspaceId, Guid? ArchiveId, string OriginalFileName,

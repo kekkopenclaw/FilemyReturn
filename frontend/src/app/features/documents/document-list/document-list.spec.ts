@@ -5,7 +5,12 @@ import { ActivatedRoute } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
-import { DocumentSummary, Tag, Workspace } from '../../../core/models';
+import {
+  DocumentSummary,
+  MetadataInput,
+  Tag,
+  Workspace,
+} from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
 import { DocumentList } from './document-list';
 
@@ -60,6 +65,19 @@ describe('DocumentList tags', () => {
     tags: [],
   };
 
+  /** Phase 4 metadata editing: a document with extracted fields to correct. */
+  const docWithMeta: DocumentSummary = {
+    ...docWithTag,
+    id: 'd3',
+    originalFileName: 'tesco.png',
+    extractedVendor: 'Tesco Extra',
+    extractedDate: '2026-11-24T00:00:00Z',
+    extractedTotal: 47.82,
+    extractedCurrency: '£',
+    suggestedCategory: 'Receipt',
+    ocrText: 'TESCO EXTRA\nTOTAL 47.82',
+  };
+
   let api: {
     getDocuments: ReturnType<typeof vi.fn>;
     getTags: ReturnType<typeof vi.fn>;
@@ -68,6 +86,7 @@ describe('DocumentList tags', () => {
     assignTag: ReturnType<typeof vi.fn>;
     unassignTag: ReturnType<typeof vi.fn>;
     applyFilingRules: ReturnType<typeof vi.fn>;
+    updateDocumentMetadata: ReturnType<typeof vi.fn>;
   };
 
   const create = async (docs: DocumentSummary[] = [docWithTag]) => {
@@ -87,6 +106,24 @@ describe('DocumentList tags', () => {
       assignTag: vi.fn(() => of([tags[0], tags[1]])),
       unassignTag: vi.fn(() => of([])),
       applyFilingRules: vi.fn(() => of({ ...docWithoutTag, tags: [tags[0]] })),
+      updateDocumentMetadata: vi.fn(
+        (_: string, docId: string, input: MetadataInput) => {
+          const base =
+            docs.find((d) => d.id === docId) ?? docWithTag;
+          return of({
+            ...base,
+            originalFileName: input.originalFileName,
+            extractedVendor: input.extractedVendor,
+            extractedDate: input.extractedDate
+              ? `${input.extractedDate}T00:00:00Z`
+              : null,
+            extractedTotal: input.extractedTotal,
+            confirmedCategory: input.category,
+            suggestedCategory:
+              input.category ?? base.suggestedCategory ?? null,
+          });
+        },
+      ),
     };
     const workspaceService = {
       workspaces: signal([workspace]),
@@ -226,5 +263,80 @@ describe('DocumentList tags', () => {
     fixture.detectChanges();
     expect(api.applyFilingRules).toHaveBeenCalledWith('ws-1', 'd2');
     expect(el.querySelectorAll('td.doc-name .tag-chip').length).toBe(1);
+  });
+
+  // Phase 4 metadata editing: correct a document's extracted fields from the
+  // details panel — file name, vendor, date, total and category.
+  it('Edit details opens a form pre-filled with the document values', async () => {
+    const { fixture, el } = await create([docWithMeta]);
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const edit = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Edit details',
+    ) as HTMLButtonElement;
+    edit.click();
+    fixture.detectChanges();
+    expect(
+      (el.querySelector('#meta-filename-d3') as HTMLInputElement).value,
+    ).toBe('tesco.png');
+    expect(
+      (el.querySelector('#meta-vendor-d3') as HTMLInputElement).value,
+    ).toBe('Tesco Extra');
+    expect(
+      (el.querySelector('#meta-date-d3') as HTMLInputElement).value,
+    ).toBe('2026-11-24');
+    expect(
+      (el.querySelector('#meta-total-d3') as HTMLInputElement).value,
+    ).toBe('47.82');
+    expect(
+      (el.querySelector('#meta-category-d3') as HTMLSelectElement).value,
+    ).toBe('Receipt');
+  });
+
+  it('saving edited details calls the API and refreshes the row', async () => {
+    const { fixture, el } = await create([docWithMeta]);
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const edit = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Edit details',
+    ) as HTMLButtonElement;
+    edit.click();
+    fixture.detectChanges();
+    setInput(el, '#meta-filename-d3', 'weekly-shop.png');
+    setInput(el, '#meta-vendor-d3', 'Sainsbury');
+    const form = el.querySelector('.metadata-form') as HTMLFormElement;
+    form.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(api.updateDocumentMetadata).toHaveBeenCalledWith('ws-1', 'd3', {
+      originalFileName: 'weekly-shop.png',
+      extractedVendor: 'Sainsbury',
+      extractedDate: '2026-11-24',
+      extractedTotal: 47.82,
+      category: 'Receipt',
+    });
+    // The row shows the new file name and the form closed.
+    expect(el.textContent).toContain('weekly-shop.png');
+    expect(el.querySelector('.metadata-form')).toBeNull();
+  });
+
+  it('a failed save shows an error and keeps the form open', async () => {
+    const { fixture, el } = await create([docWithMeta]);
+    api.updateDocumentMetadata.mockReturnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 400, statusText: 'Bad Request' }),
+      ),
+    );
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const edit = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Edit details',
+    ) as HTMLButtonElement;
+    edit.click();
+    fixture.detectChanges();
+    const form = el.querySelector('.metadata-form') as HTMLFormElement;
+    form.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Check the file name');
+    expect(el.querySelector('.metadata-form')).not.toBeNull();
   });
 });

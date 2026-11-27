@@ -358,6 +358,106 @@
                         <p class="error-banner" role="alert">{{ tagOpError() }}</p>
                       }
                     </div>
+                    <!-- Phase 4 organisation: edit the extracted metadata.
+                         Outside the OCR branches — editing works on any
+                         document, even before OCR has run. -->
+                    <div class="metadata-box">
+                      <p class="ocr-label">Details</p>
+                      @if (editingId() === doc.id && metadataDraft[doc.id]; as draft) {
+                        <form
+                          class="metadata-form"
+                          (submit)="$event.preventDefault(); saveMetadata(doc)"
+                        >
+                          <label for="meta-filename-{{ doc.id }}">
+                            File name
+                            <input
+                              id="meta-filename-{{ doc.id }}"
+                              type="text"
+                              maxlength="255"
+                              [value]="draft.fileName"
+                              (input)="setDraftField(doc, 'fileName', $any($event.target).value)"
+                            />
+                          </label>
+                          <label for="meta-vendor-{{ doc.id }}">
+                            Vendor
+                            <input
+                              id="meta-vendor-{{ doc.id }}"
+                              type="text"
+                              maxlength="200"
+                              placeholder="Shop or sender"
+                              [value]="draft.vendor"
+                              (input)="setDraftField(doc, 'vendor', $any($event.target).value)"
+                            />
+                          </label>
+                          <label for="meta-date-{{ doc.id }}">
+                            Date
+                            <input
+                              id="meta-date-{{ doc.id }}"
+                              type="date"
+                              [value]="draft.date"
+                              (input)="setDraftField(doc, 'date', $any($event.target).value)"
+                            />
+                          </label>
+                          <label for="meta-total-{{ doc.id }}">
+                            Total
+                            <input
+                              id="meta-total-{{ doc.id }}"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputmode="decimal"
+                              placeholder="0.00"
+                              [value]="draft.total"
+                              (input)="setDraftField(doc, 'total', $any($event.target).value)"
+                            />
+                          </label>
+                          <label for="meta-category-{{ doc.id }}">
+                            Category
+                            <select
+                              id="meta-category-{{ doc.id }}"
+                              (change)="setDraftField(doc, 'category', $any($event.target).value)"
+                            >
+                              <!-- [selected] on the options, not [value] on the
+                                   select: the select's value is applied before
+                                   its @for options exist, so it would be lost. -->
+                              <option value="" [selected]="draft.category === ''">No category</option>
+                              @for (category of categories; track category) {
+                                <option [value]="category" [selected]="draft.category === category">
+                                  {{ categoryLabel(category) }}
+                                </option>
+                              }
+                            </select>
+                          </label>
+                          <div class="metadata-actions">
+                            <button
+                              type="submit"
+                              class="btn btn-small btn-primary"
+                              [disabled]="savingMetadataId() === doc.id"
+                            >
+                              {{ savingMetadataId() === doc.id ? 'Saving…' : 'Save details' }}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-small"
+                              (click)="cancelEditing(doc)"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                        @if (metadataError()) {
+                          <p class="error-banner" role="alert">{{ metadataError() }}</p>
+                        }
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn btn-small"
+                          (click)="startEditing(doc)"
+                        >
+                          Edit details
+                        </button>
+                      }
+                    </div>
                   </div>
                 </td>
               </tr>

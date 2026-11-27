@@ -89,6 +89,91 @@ public class DocumentService
         return ToDto(doc);
     }
 
+    /// <summary>
+    /// Edits a document's extracted metadata (Phase 4). StandardUser+ only.
+    /// Full-form PUT: the client sends every field; null clears vendor, date
+    /// or total. File name must be 1–255 characters with no path separators.
+    /// Date must be between 1 Jan 1900 and today (tomorrow allowed for
+    /// timezone skew); total must be 0 ≤ total &lt; 1,000,000,000. A known
+    /// category counts as confirmed (like ConfirmCategory) and clears the
+    /// review flag; null clears the confirmed category and leaves the
+    /// suggestion and review flag as they are. Only fields that actually
+    /// change are written to the audit log (Document.MetadataUpdated); a
+    /// no-change save returns the document without an audit entry. 400 on an
+    /// invalid value, 404 on a missing document.
+    /// </summary>
+    public async Task<DocumentDto> UpdateMetadataAsync(string userId, Guid workspaceId, Guid documentId, UpdateDocumentMetadataRequest request, CancellationToken ct = default)
+    {
+        await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.StandardUser, ct);
+        var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
+
+        var fileName = request.OriginalFileName.Trim();
+        if (fileName.Length is 0 or > 255 || fileName.IndexOfAny(['/', '\\']) >= 0 || fileName is "." or "..")
+            throw new ValidationException("File name must be 1–255 characters and cannot contain / or \\.");
+        var vendor = string.IsNullOrWhiteSpace(request.ExtractedVendor) ? null : request.ExtractedVendor.Trim();
+        if (vendor?.Length > 200)
+            throw new ValidationException("Vendor must be at most 200 characters.");
+        DateTime? date = null;
+        if (request.ExtractedDate is { } rawDate)
+        {
+            date = rawDate.Date;
+            if (date < new DateTime(1900, 1, 1) || date > DateTime.UtcNow.Date.AddDays(1))
+                throw new ValidationException("Date must be between 1 January 1900 and today.");
+        }
+        if (request.ExtractedTotal is { } total && (total < 0 || total >= 1_000_000_000m))
+            throw new ValidationException("Total must be between 0 and 999,999,999.99.");
+        if (request.Category is not null && !DocumentClassifier.IsKnownCategory(request.Category))
+            throw new ValidationException($"Unknown category '{request.Category}'. Use one of: {string.Join(", ", DocumentClassifier.Categories)}.");
+
+        var changes = new List<string>();
+        if (doc.OriginalFileName != fileName)
+        {
+            changes.Add($"file name \"{doc.OriginalFileName}\" → \"{fileName}\"");
+            doc.OriginalFileName = fileName;
+        }
+        if (doc.ExtractedVendor != vendor)
+        {
+            changes.Add($"vendor {Show(doc.ExtractedVendor)} → {Show(vendor)}");
+            doc.ExtractedVendor = vendor;
+        }
+        if (doc.ExtractedDate?.Date != date)
+        {
+            changes.Add($"date {ShowDate(doc.ExtractedDate)} → {ShowDate(date)}");
+            doc.ExtractedDate = date;
+        }
+        if (doc.ExtractedTotal != request.ExtractedTotal)
+        {
+            changes.Add($"total {ShowTotal(doc.ExtractedTotal)} → {ShowTotal(request.ExtractedTotal)}");
+            doc.ExtractedTotal = request.ExtractedTotal;
+        }
+        if (request.Category is not null)
+        {
+            var previous = doc.ConfirmedCategory ?? doc.SuggestedCategory ?? "—";
+            if (doc.ConfirmedCategory != request.Category || doc.SuggestedCategory != request.Category || doc.NeedsReview)
+            {
+                changes.Add($"category {previous} → {request.Category}");
+                doc.ConfirmedCategory = request.Category;
+                doc.SuggestedCategory = request.Category;
+                doc.NeedsReview = false;
+            }
+        }
+        else if (doc.ConfirmedCategory is not null)
+        {
+            changes.Add($"category {doc.ConfirmedCategory} → —");
+            doc.ConfirmedCategory = null;
+        }
+
+        await _documents.UpdateAsync(doc, ct);
+        if (changes.Count > 0)
+            await _audit.LogAsync(userId, workspaceId, "Document.MetadataUpdated", "Document", doc.Id.ToString(),
+                $"{doc.OriginalFileName}: {string.Join("; ", changes)}", ct);
+        return ToDto(doc);
+    }
+
+    private static string Show(string? value) => value is null ? "—" : $"\"{value}\"";
+    private static string ShowDate(DateTime? value) => value?.ToString("yyyy-MM-dd") ?? "—";
+    private static string ShowTotal(decimal? value) => value?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "—";
+
     public async Task<DocumentDto> GetAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);

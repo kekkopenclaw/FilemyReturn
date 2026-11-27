@@ -9,11 +9,23 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
-import { DocumentSummary, Tag } from '../../../core/models';
+import { DocumentSummary, MetadataInput, Tag } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
 import { DocumentViewer } from '../document-viewer/document-viewer';
 import { EmptyState } from '../../../shared/empty-state/empty-state';
 import { LoadingSpinner } from '../../../shared/loading-spinner/loading-spinner';
+
+/** Draft values for the metadata edit form, keyed by document id. */
+interface MetadataDraft {
+  fileName: string;
+  vendor: string;
+  /** yyyy-MM-dd, as the date input wants it. */
+  date: string;
+  /** Raw text from the number input; empty means "clear the total". */
+  total: string;
+  /** '' means no confirmed category. */
+  category: string;
+}
 
 /** Categories the classifier suggests and a reviewer can confirm. */
 export const DOCUMENT_CATEGORIES = [
@@ -204,6 +216,93 @@ export class DocumentList {
 
   protected onCategoryChosen(doc: DocumentSummary, event: Event): void {
     this.chosenCategory[doc.id] = (event.target as HTMLSelectElement).value;
+  }
+
+  /** Phase 4 metadata editing: document whose details are being edited. */
+  protected readonly editingId = signal<string | null>(null);
+  protected readonly savingMetadataId = signal<string | null>(null);
+  protected readonly metadataError = signal<string | null>(null);
+  /** Edit-form draft values, keyed by document id. */
+  protected readonly metadataDraft: Record<string, MetadataDraft> = {};
+
+  /** Phase 4: open the edit form, pre-filled with the document's values. */
+  protected startEditing(doc: DocumentSummary): void {
+    this.metadataDraft[doc.id] = {
+      fileName: doc.originalFileName,
+      vendor: doc.extractedVendor ?? '',
+      date: doc.extractedDate ? doc.extractedDate.slice(0, 10) : '',
+      total: doc.extractedTotal != null ? String(doc.extractedTotal) : '',
+      category: doc.confirmedCategory ?? doc.suggestedCategory ?? '',
+    };
+    this.metadataError.set(null);
+    this.editingId.set(doc.id);
+  }
+
+  /** Phase 4: close the edit form without saving. */
+  protected cancelEditing(doc: DocumentSummary): void {
+    delete this.metadataDraft[doc.id];
+    this.metadataError.set(null);
+    this.editingId.set(null);
+  }
+
+  protected setDraftField(
+    doc: DocumentSummary,
+    field: keyof MetadataDraft,
+    value: string,
+  ): void {
+    const draft = this.metadataDraft[doc.id];
+    if (draft) draft[field] = value;
+  }
+
+  /**
+   * Phase 4: save the edit form. Full-form PUT — every field is sent; an
+   * empty vendor/date/total clears that field, and an empty category clears
+   * the confirmed category. A known category counts as confirmed.
+   */
+  protected saveMetadata(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    const draft = this.metadataDraft[doc.id];
+    if (!workspaceId || !draft || this.savingMetadataId()) return;
+    const fileName = draft.fileName.trim();
+    if (!fileName) {
+      this.metadataError.set('File name is required.');
+      return;
+    }
+    let total: number | null = null;
+    if (draft.total.trim() !== '') {
+      total = Number(draft.total);
+      if (!Number.isFinite(total) || total < 0) {
+        this.metadataError.set('Total must be a number of 0 or more.');
+        return;
+      }
+    }
+    this.savingMetadataId.set(doc.id);
+    this.metadataError.set(null);
+    const input: MetadataInput = {
+      originalFileName: fileName,
+      extractedVendor: draft.vendor.trim() || null,
+      extractedDate: draft.date || null,
+      extractedTotal: total,
+      category: draft.category || null,
+    };
+    this.api.updateDocumentMetadata(workspaceId, doc.id, input).subscribe({
+      next: (updated) => {
+        this.savingMetadataId.set(null);
+        this.editingId.set(null);
+        delete this.metadataDraft[doc.id];
+        this.documents.set(
+          this.documents().map((d) => (d.id === doc.id ? updated : d)),
+        );
+      },
+      error: (err: unknown) => {
+        this.savingMetadataId.set(null);
+        this.metadataError.set(
+          err instanceof HttpErrorResponse && err.status === 400
+            ? 'Could not save the details. Check the file name, date and total are valid.'
+            : 'Could not save the details. Please try again.',
+        );
+      },
+    });
   }
 
   /** Phase 4 organisation: load the workspace's tags. */

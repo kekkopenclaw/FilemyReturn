@@ -9,6 +9,7 @@ import {
   DocumentSummary,
   FilingRule,
   FilingRuleInput,
+  MetadataInput,
   Tag,
   Workspace,
 } from './models';
@@ -99,6 +100,24 @@ export class ApiService {
     return this.http.post<DocumentSummary>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/confirm-category`,
       { category },
+    );
+  }
+
+  /**
+   * Edits a document's extracted metadata (Phase 4 organisation): file name,
+   * vendor, date, total and category. Full-form PUT — every field is sent;
+   * null clears vendor, date or total, and a null category clears the
+   * confirmed category. A known category counts as confirmed and clears the
+   * review flag. 400 on an invalid file name, date, total or category.
+   */
+  updateDocumentMetadata(
+    workspaceId: string,
+    documentId: string,
+    input: MetadataInput,
+  ): Observable<DocumentSummary> {
+    return this.http.put<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/metadata`,
+      input,
     );
   }
 

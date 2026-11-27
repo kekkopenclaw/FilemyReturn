@@ -97,6 +97,15 @@ export interface FilingRuleInput {
   moveToArchiveId: string | null;
 }
 
+/** Payload for editing a document's extracted metadata (Phase 4). Null clears vendor/date/total; category null clears the confirmed category. */
+export interface MetadataInput {
+  originalFileName: string;
+  extractedVendor: string | null;
+  extractedDate: string | null;
+  extractedTotal: number | null;
+  category: string | null;
+}
+
 /** Backend DocumentStatus enum: Uploaded / Processing / Ready / Failed. */
 export type DocumentStatus =
   | 'Uploaded'

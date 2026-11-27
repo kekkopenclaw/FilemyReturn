@@ -174,6 +174,17 @@ public class DocumentsController : ControllerBase
         => Ok(await _ocr.ReprocessAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
 
     /// <summary>
+    /// Edits a document's extracted metadata (Phase 4). StandardUser+ only.
+    /// Full-form PUT: the client sends every field; null clears vendor, date
+    /// or total. A known category counts as confirmed and clears the review
+    /// flag; null clears the confirmed category. 400 on an invalid file name,
+    /// date, total or category; 404 on a missing document.
+    /// </summary>
+    [HttpPut("{documentId:guid}/metadata")]
+    public async Task<ActionResult<DocumentDto>> UpdateMetadata(Guid workspaceId, Guid documentId, [FromBody] UpdateDocumentMetadataRequest request, CancellationToken ct)
+        => Ok(await _documents.UpdateMetadataAsync(ControllerUser.Id(this), workspaceId, documentId, request, ct));
+
+    /// <summary>
     /// Human review: confirms or corrects a document's category (Phase 3 classification).
     /// StandardUser+ only. Body: { "category": "Invoice" }. Clears the review flag.
     /// Returns 400 for an unknown category.
