@@ -95,12 +95,13 @@ public class DocumentService
         return ToDto(doc);
     }
 
-    /// <summary>Opens a document for secure download (members only). Returns the stored stream + metadata; the caller disposes the stream.</summary>
+    /// <summary>Opens a document for secure download (members only). Downloads are audited — a document leaving the system must leave a trail.</summary>
     public async Task<(DocumentDto Document, Stream Content)> GetDownloadAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
         var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
         var stream = await _storage.OpenReadAsync(doc.StorageKey, ct) ?? throw new NotFoundException("Stored file not found.");
+        await _audit.LogAsync(userId, workspaceId, "Document.Downloaded", "Document", doc.Id.ToString(), doc.OriginalFileName, ct);
         return (ToDto(doc), stream);
     }
 
@@ -166,7 +167,8 @@ public class AuditQueryService
     public async Task<List<AuditLogDto>> ListAsync(string userId, Guid workspaceId, int skip = 0, int take = 50, CancellationToken ct = default)
     {
         await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.ArchiveManager, ct);
-        var logs = await _auditRepo.ListByWorkspaceAsync(workspaceId, skip, Math.Clamp(take, 1, 100), ct);
+        // Clamp both bounds: a negative skip throws inside EF Core (500), and take is capped at 100.
+        var logs = await _auditRepo.ListByWorkspaceAsync(workspaceId, Math.Max(0, skip), Math.Clamp(take, 1, 100), ct);
         return logs.Select(l => new AuditLogDto(l.Id, l.WorkspaceId, l.UserId, l.Action, l.EntityType, l.EntityId, l.Details, l.CreatedAt)).ToList();
     }
 }
