@@ -110,8 +110,14 @@ as TEXT uuid strings will never match the claim's Guid parameters. Seed through 
 ## What is still a stub / not done
 
 - **PaddleOCR**: unwired stub (see decision above). No handwriting OCR yet.
-- **Classification beyond receipts**: only the "Receipt" suggestion exists; Invoice/Contract/etc.
-  classification with confidence + human review is still to build (Phase 3 remainder).
+- **Classification beyond receipts**: **done 2026-11-27** — `DocumentClassifier` (Application, pure,
+  no external calls) scores Receipt, Invoice, Contract, BankStatement, Letter and Other from
+  the OCR text with weighted keyword/regex signals and a 0–100 confidence. Below 60, or when
+  nothing matches, the document is flagged `NeedsReview` and appears in the dashboard review
+  queue; a human confirms or corrects the category via
+  `POST /api/workspaces/{id}/documents/{documentId}/confirm-category`. New columns:
+  `ClassificationConfidence`, `ClassificationReason`, `NeedsReview`, `ConfirmedCategory`
+  (migration `20261127012706_AddClassification`). Tests: `ClassificationTests` (10 tests).
 - **Full-text search over `OcrText`**: **done 2026-11-27** — `GET /api/workspaces/{id}/documents?search=...`
   matches file name, extracted vendor and the full OCR text (LIKE, workspace-scoped), and the
   Documents page has a search box wired to it. Test: `ReceiptOcrTests.Search_FindsDocumentByOcrTextAndFileName_NotByUnrelatedTerm`.
