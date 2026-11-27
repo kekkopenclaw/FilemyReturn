@@ -339,4 +339,27 @@ describe('DocumentList tags', () => {
     expect(el.textContent).toContain('Check the file name');
     expect(el.querySelector('.metadata-form')).not.toBeNull();
   });
+
+  it('the review-box category select opens pre-filled with the suggested category', async () => {
+    const docNeedsReview: DocumentSummary = {
+      ...docWithTag,
+      id: 'd9',
+      originalFileName: 'invoice.pdf',
+      suggestedCategory: 'Invoice',
+      confirmedCategory: null,
+      needsReview: true,
+      ocrText: 'INVOICE 123',
+    };
+    const { fixture, el } = await create([docNeedsReview]);
+    (el.querySelector('.doc-actions .btn') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const select = el.querySelector(
+      '.review-box select',
+    ) as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    // [value] on the select is applied before its @for options exist,
+    // so the select would open blank instead of on the suggested
+    // category — the same bug the metadata form fixed with [selected].
+    expect(select.value).toBe('Invoice');
+  });
 });

@@ -280,11 +280,21 @@
                           <label>
                             Category
                             <select
-                              [value]="effectiveCategory(doc) ?? 'Other'"
                               (change)="onCategoryChosen(doc, $event)"
                             >
+                              <!-- [selected] on the options, not [value] on the
+                                   select: the select's value is applied before
+                                   its @for options exist, so it would be lost
+                                   (the select opened on the first category
+                                   instead of the document's). The chosen
+                                   value wins while the user is picking, so
+                                   the select does not snap back on change
+                                   detection. -->
                               @for (category of categories; track category) {
-                                <option [value]="category">
+                                <option
+                                  [value]="category"
+                                  [selected]="(chosenCategory[doc.id] ?? effectiveCategory(doc) ?? 'Other') === category"
+                                >
                                   {{ categoryLabel(category) }}
                                 </option>
                               }
