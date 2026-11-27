@@ -34,6 +34,18 @@
     <p class="success-banner" role="status">Document uploaded.</p>
   }
 
+  <div class="search-bar">
+    <label class="visually-hidden" for="document-search">Search documents</label>
+    <input
+      id="document-search"
+      type="search"
+      placeholder="Search file name, vendor or document text…"
+      [value]="searchTerm()"
+      [disabled]="!workspaceService.selectedWorkspaceId()"
+      (input)="onSearchInput($event)"
+    />
+  </div>
+
   @if (loading()) {
     <app-loading-spinner />
   } @else if (error()) {
@@ -69,6 +81,23 @@
                 <button
                   type="button"
                   class="btn btn-small"
+                  (click)="toggleDetails(doc)"
+                >
+                  {{ expandedId() === doc.id ? 'Hide details' : 'Details' }}
+                </button>
+                @if (doc.status === 'Failed') {
+                  <button
+                    type="button"
+                    class="btn btn-small"
+                    [disabled]="reprocessingId() === doc.id"
+                    (click)="reprocess(doc)"
+                  >
+                    {{ reprocessingId() === doc.id ? 'Retrying…' : 'Retry OCR' }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="btn btn-small"
                   [disabled]="downloadingId() === doc.id"
                   (click)="view(doc)"
                 >
@@ -84,6 +113,41 @@
                 </button>
               </td>
             </tr>
+            @if (expandedId() === doc.id) {
+              <tr class="doc-details-row">
+                <td colspan="6">
+                  <div class="doc-details">
+                    @if (doc.ocrStatus === 'Queued' || doc.ocrStatus === 'Processing') {
+                      <p class="doc-details-empty">Reading the document… this usually takes a few seconds.</p>
+                    } @else if (doc.ocrStatus === 'Failed') {
+                      <p class="doc-details-empty">OCR could not read this document. Try “Retry OCR”, or upload a clearer scan.</p>
+                    } @else if (doc.ocrText) {
+                      <dl class="ocr-fields">
+                        @if (doc.extractedVendor) {
+                          <div><dt>Vendor</dt><dd>{{ doc.extractedVendor }}</dd></div>
+                        }
+                        @if (doc.extractedDate) {
+                          <div><dt>Date</dt><dd>{{ doc.extractedDate | date: 'mediumDate' }}</dd></div>
+                        }
+                        @if (doc.extractedTotal != null) {
+                          <div><dt>Total</dt><dd>{{ doc.extractedCurrency }}{{ doc.extractedTotal }}</dd></div>
+                        }
+                        @if (doc.suggestedCategory) {
+                          <div><dt>Suggested category</dt><dd>{{ doc.suggestedCategory }}</dd></div>
+                        }
+                        @if (confidenceLabel(doc)) {
+                          <div><dt>OCR confidence</dt><dd>{{ confidenceLabel(doc) }}</dd></div>
+                        }
+                      </dl>
+                      <p class="ocr-label">Extracted text</p>
+                      <pre class="ocr-text">{{ doc.ocrText }}</pre>
+                    } @else {
+                      <p class="doc-details-empty">No text was extracted from this document.</p>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

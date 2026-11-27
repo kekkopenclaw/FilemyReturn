@@ -50,9 +50,31 @@ export class ApiService {
 
   // -- Documents ----------------------------------------------------------
 
-  getDocuments(workspaceId: string): Observable<DocumentSummary[]> {
+  /**
+   * Lists a workspace's documents. Optional `search` matches file name,
+   * extracted vendor or the full OCR text (Phase 3 full-text search).
+   */
+  getDocuments(
+    workspaceId: string,
+    search?: string,
+  ): Observable<DocumentSummary[]> {
+    const query =
+      search && search.trim()
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : '';
     return this.http.get<DocumentSummary[]>(
-      `${this.baseUrl}/workspaces/${workspaceId}/documents`,
+      `${this.baseUrl}/workspaces/${workspaceId}/documents${query}`,
+    );
+  }
+
+  /** Re-runs OCR on a document (Phase 3 reprocess endpoint). */
+  reprocessDocument(
+    workspaceId: string,
+    documentId: string,
+  ): Observable<DocumentSummary> {
+    return this.http.post<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/reprocess`,
+      {},
     );
   }
 

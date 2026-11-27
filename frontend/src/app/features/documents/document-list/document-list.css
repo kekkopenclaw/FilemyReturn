@@ -67,3 +67,80 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Phase 3: search + OCR details */
+.search-bar {
+  margin: 1rem 0;
+  max-width: 32rem;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.search-bar input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.doc-details-row td {
+  white-space: normal;
+  background: var(--color-surface-muted);
+}
+
+.doc-details {
+  padding: 0.25rem 0;
+}
+
+.doc-details-empty {
+  color: var(--color-muted);
+  margin: 0.25rem 0;
+}
+
+.ocr-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0 0 0.75rem;
+}
+
+.ocr-fields div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ocr-fields dt {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.ocr-fields dd {
+  margin: 0;
+}
+
+.ocr-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin: 0 0 0.25rem;
+}
+
+.ocr-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

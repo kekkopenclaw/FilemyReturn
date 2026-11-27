@@ -4,7 +4,9 @@ using DocuArchive.Application;
 using DocuArchive.Domain;
 using DocuArchive.Infrastructure.Data;
 using DocuArchive.Infrastructure.Ocr;
+using DocuArchive.Worker;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -222,6 +224,51 @@ public class ReceiptOcrTests : IClassFixture<CustomWebApplicationFactory>
         var docId = await SeedDemoReceiptAsync(workspaceId, "seed-user");
         var reprocess = await client.PostAsync($"/api/workspaces/{workspaceId}/documents/{docId}/reprocess", null);
         Assert.Equal(HttpStatusCode.BadRequest, reprocess.StatusCode);
+    }
+
+    // ---------- Search over OCR text (Phase 3) ----------
+
+    [Fact]
+    public async Task Search_FindsDocumentByOcrTextAndFileName_NotByUnrelatedTerm()
+    {
+        var (client, workspaceId, userId) = await SetupWorkspaceAsync("ocr-search");
+        var docId = await SeedDemoReceiptAsync(workspaceId, userId);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var processing = scope.ServiceProvider.GetRequiredService<OcrProcessingService>();
+            Assert.True(await processing.ProcessAsync(workspaceId, docId, userId));
+        }
+
+        // File-name search works whether or not tesseract is installed.
+        var byName = await client.GetFromJsonAsync<List<DocBody>>($"/api/workspaces/{workspaceId}/documents?search=demo-receipt");
+        Assert.NotNull(byName);
+        Assert.Single(byName);
+        Assert.Equal(docId, byName[0].Id);
+
+        var byUnrelated = await client.GetFromJsonAsync<List<DocBody>>($"/api/workspaces/{workspaceId}/documents?search=plumber");
+        Assert.NotNull(byUnrelated);
+        Assert.Empty(byUnrelated);
+
+        if (!TesseractAvailable()) return; // OCR-text search needs the binary (CI + Docker have it).
+        // "Flat White" appears only in the OCR text — not in the file name or vendor.
+        var byOcrText = await client.GetFromJsonAsync<List<DocBody>>($"/api/workspaces/{workspaceId}/documents?search=flat%20white");
+        Assert.NotNull(byOcrText);
+        Assert.Single(byOcrText);
+        Assert.Equal(docId, byOcrText[0].Id);
+
+        var byVendor = await client.GetFromJsonAsync<List<DocBody>>($"/api/workspaces/{workspaceId}/documents?search=corner%20cafe");
+        Assert.NotNull(byVendor);
+        Assert.Single(byVendor);
+    }
+
+    // ---------- Worker wiring (Phase 3: worker runs inside WebApi on Render) ----------
+
+    [Fact]
+    public void Worker_IsRegisteredAsHostedService()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var hosted = scope.ServiceProvider.GetServices<IHostedService>();
+        Assert.Contains(hosted, h => h is OcrWorker);
     }
 
     // ---------- helpers ----------

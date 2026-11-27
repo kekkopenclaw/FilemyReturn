@@ -24,6 +24,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Application\DocuArchive.Application.csproj" />
     <ProjectReference Include="..\Infrastructure\DocuArchive.Infrastructure.csproj" />
+    <!-- Phase 3: the OCR worker runs inside the WebApi process on the single-container
+         Render deploy (see docs/OCR.md). The standalone Worker host is for separate scaling only. -->
+    <ProjectReference Include="..\Worker\DocuArchive.Worker.csproj" />
   </ItemGroup>
 
 </Project>

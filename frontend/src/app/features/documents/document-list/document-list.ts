@@ -1,6 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
-import { Component, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { ApiService } from '../../../core/api.service';
 import { DocumentSummary } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
@@ -8,7 +14,8 @@ import { EmptyState } from '../../../shared/empty-state/empty-state';
 import { LoadingSpinner } from '../../../shared/loading-spinner/loading-spinner';
 
 /**
- * Document list for the selected workspace, with upload and download.
+ * Document list for the selected workspace, with upload, download, OCR
+ * details and full-text search over file names and OCR text (Phase 3).
  * Statuses match the backend DocumentStatus enum exactly:
  * Uploaded / Processing / Ready / Failed.
  */
@@ -21,6 +28,7 @@ import { LoadingSpinner } from '../../../shared/loading-spinner/loading-spinner'
 export class DocumentList {
   private readonly api = inject(ApiService);
   protected readonly workspaceService = inject(WorkspaceService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly documents = signal<DocumentSummary[]>([]);
   protected readonly loading = signal(false);
@@ -29,6 +37,16 @@ export class DocumentList {
   protected readonly uploadError = signal<string | null>(null);
   protected readonly uploadSuccess = signal(false);
   protected readonly downloadingId = signal<string | null>(null);
+  /** Phase 3: full-text search term (file name, vendor, OCR text). */
+  protected readonly searchTerm = signal('');
+  /** Phase 3: document whose OCR details panel is open. */
+  protected readonly expandedId = signal<string | null>(null);
+  protected readonly reprocessingId = signal<string | null>(null);
+
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollCount = 0;
+  private readonly maxPolls = 24; // ~2 minutes at 5s, then the row stays as-is
 
   constructor() {
     effect(() => {
@@ -39,6 +57,10 @@ export class DocumentList {
         this.documents.set([]);
         this.error.set(null);
       }
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      if (this.pollTimer) clearTimeout(this.pollTimer);
     });
   }
 
@@ -66,6 +88,48 @@ export class DocumentList {
 
   protected statusLabel(status: string): string {
     return status;
+  }
+
+  /** OCR confidence as a rounded percent, or null when OCR has not run. */
+  protected confidenceLabel(doc: DocumentSummary): string | null {
+    return doc.ocrConfidence == null
+      ? null
+      : `${doc.ocrConfidence.toFixed(1)}%`;
+  }
+
+  /** Phase 3: search the workspace's documents (file name, vendor, OCR text). */
+  protected onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm.set(value);
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => {
+      const workspaceId = this.workspaceService.selectedWorkspaceId();
+      if (workspaceId) this.load(workspaceId);
+    }, 300);
+  }
+
+  /** Phase 3: show or hide a document's extracted OCR fields and text. */
+  protected toggleDetails(doc: DocumentSummary): void {
+    this.expandedId.set(this.expandedId() === doc.id ? null : doc.id);
+  }
+
+  /** Phase 3: re-run OCR on a failed document. */
+  protected reprocess(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.reprocessingId()) return;
+    this.reprocessingId.set(doc.id);
+    this.uploadError.set(null);
+    this.api.reprocessDocument(workspaceId, doc.id).subscribe({
+      next: () => {
+        this.reprocessingId.set(null);
+        this.pollCount = 0;
+        this.load(workspaceId);
+      },
+      error: () => {
+        this.reprocessingId.set(null);
+        this.uploadError.set('Could not re-run OCR for this document.');
+      },
+    });
   }
 
   protected onFileSelected(event: Event): void {
@@ -142,13 +206,17 @@ export class DocumentList {
     });
   }
 
-  private load(workspaceId: string): void {
-    this.loading.set(true);
+  private load(workspaceId: string, silent = false): void {
+    if (!silent) {
+      this.loading.set(true);
+      this.pollCount = 0;
+    }
     this.error.set(null);
-    this.api.getDocuments(workspaceId).subscribe({
+    this.api.getDocuments(workspaceId, this.searchTerm()).subscribe({
       next: (docs) => {
         this.documents.set(docs);
         this.loading.set(false);
+        this.schedulePoll(workspaceId, docs);
       },
       error: () => {
         this.loading.set(false);
@@ -157,5 +225,30 @@ export class DocumentList {
         );
       },
     });
+  }
+
+  /**
+   * Phase 3: while any document is still being processed, reload quietly every
+   * 5 seconds so the row flips to Ready (with its OCR fields) without a manual
+   * refresh. Stops after ~2 minutes or when nothing is pending.
+   */
+  private schedulePoll(workspaceId: string, docs: DocumentSummary[]): void {
+    if (this.pollTimer) clearTimeout(this.pollTimer);
+    const pending = docs.some(
+      (d) =>
+        d.status === 'Uploaded' ||
+        d.status === 'Processing' ||
+        d.ocrStatus === 'Queued' ||
+        d.ocrStatus === 'Processing',
+    );
+    if (!pending || this.pollCount >= this.maxPolls) {
+      this.pollCount = 0;
+      return;
+    }
+    this.pollCount++;
+    this.pollTimer = setTimeout(
+      () => this.load(workspaceId, true),
+      5000,
+    );
   }
 }

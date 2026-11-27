@@ -29,7 +29,7 @@ public interface IDocumentRepository
     Task<Document?> GetByIdAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
     /// <summary>Finds a document in this workspace with the given SHA-256 hash (duplicate detection).</summary>
     Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken cancellationToken = default);
-    Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default);
+    Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default, string? search = null);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>
     Task UpdateAsync(Document document, CancellationToken cancellationToken = default);

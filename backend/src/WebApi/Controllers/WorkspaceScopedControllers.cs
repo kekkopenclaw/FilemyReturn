@@ -48,8 +48,8 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, CancellationToken ct)
-        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct));
+    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, CancellationToken ct)
+        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search));
 
     [HttpGet("{documentId:guid}")]
     public async Task<ActionResult<DocumentDto>> Get(Guid workspaceId, Guid documentId, CancellationToken ct)

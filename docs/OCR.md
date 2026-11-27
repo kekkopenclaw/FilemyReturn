@@ -79,42 +79,46 @@ Reprocess: POST /api/workspaces/{id}/documents/{docId}/reprocess (StandardUser+)
 
 ## Setup the deploy needs (DevOps — Dockerfile)
 
-The Docker image must install the OCR tools (the API currently fails OCR with `Success=false`
-when they are absent — honest, but the demo does nothing). Add to the Dockerfile:
-
-```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-The CI `docker` job builds the same image, so a missing binary is caught in CI, not on Render.
+~~The Docker image must install the OCR tools~~ — **done 2026-11-27 (Phase 3 builder)**:
+the runtime stage installs `tesseract-ocr poppler-utils` (see Dockerfile). The CI
+`docker` job builds the same image, so a missing binary is caught in CI, not on Render.
 GitHub ubuntu runners already have both tools, so CI tests run real OCR.
 
 ## WebApi integration (backend fixer — 2 lines in `Program.cs`)
 
-The worker must also run inside the WebApi process, because the Render deploy is one container
-(the standalone Worker host is for separate scaling only). In `WebApi/Program.cs`, after
-`builder.Services.AddInfrastructure(...)`:
+**Done 2026-11-27 (Phase 3 builder):** the worker runs inside the WebApi process — `Program.cs`
+registers `IOcrJobQueue`/`ChannelOcrJobQueue` and `AddHostedService<OcrWorker>()` (plus a
+`ProjectReference` to the Worker project), so uploads are processed in-process within ~10
+seconds on the single-container Render deploy. The standalone Worker host is for separate
+scaling only. The `reprocess` endpoint works either way (it resets to Queued; the worker —
+whichever host runs it — picks the document up).
 
-```csharp
-builder.Services.AddSingleton<IOcrJobQueue, ChannelOcrJobQueue>();
-builder.Services.AddHostedService<OcrWorker>();
-// + usings: DocuArchive.Domain; DocuArchive.Worker;
-```
+## Verified live (smoke test, 2026-11-27 00:43, local)
 
-Without this, uploads sit at Queued until the standalone worker runs; with it, uploads are
-processed in-process within ~10 seconds. The `reprocess` endpoint works either way (it resets
-to Queued; the worker — whichever host runs it — picks the document up).
+Real WebApi over HTTP + standalone worker host, same SQLite DB: register → login → create
+workspace → upload `docs/demo-receipt/demo-receipt.png` → Queued → worker ran → document
+`Ready` / `Completed`, confidence 95.71, vendor THE CORNER CAFE, date 2026-11-24, total £18.40,
+suggestedCategory Receipt. Full suite: **37/37 tests pass** (26 pre-existing + 11 new receipt tests).
+
+Worker robustness fix found during the smoke test: a claim that affects 0 rows (e.g. a row the
+worker cannot match) used to count as "work", so the loop never slept and spun at ~1,600
+DB commands/sec. `ProcessOneAsync` now returns whether it actually claimed the document, and
+the poll interval is only skipped when real work happened. Note for anyone seeding test data
+by hand: EF Core on SQLite stores Guids as 16-byte BLOBs in .NET byte order — rows inserted
+as TEXT uuid strings will never match the claim's Guid parameters. Seed through EF or the API.
 
 ## What is still a stub / not done
 
 - **PaddleOCR**: unwired stub (see decision above). No handwriting OCR yet.
-- **Full-text search over `OcrText`**: the text is stored, but no search endpoint queries it yet (Phase 4).
 - **Classification beyond receipts**: only the "Receipt" suggestion exists; Invoice/Contract/etc.
   classification with confidence + human review is still to build (Phase 3 remainder).
-- **No OCR in the Angular UI yet**: the API returns the fields; the frontend does not display
-  them yet (the frontend fixer finished before this flow landed). The promo video should show
-  the API / dashboard data, not a finished OCR screen — see shot list.
+- **Full-text search over `OcrText`**: **done 2026-11-27** — `GET /api/workspaces/{id}/documents?search=...`
+  matches file name, extracted vendor and the full OCR text (LIKE, workspace-scoped), and the
+  Documents page has a search box wired to it. Test: `ReceiptOcrTests.Search_FindsDocumentByOcrTextAndFileName_NotByUnrelatedTerm`.
+- **OCR fields in the Angular UI**: **done 2026-11-27** — the Documents page shows an expandable
+  Details panel per document (vendor, date, total, suggested category, OCR confidence, extracted
+  text), a "Retry OCR" button for failed documents, and auto-refreshes while a document is
+  being processed so the row flips to Ready on its own.
 - **`dotnet test` in this VM**: `vstest` cannot connect to the test host here (known VM issue);
   CI (GitHub runners) is the proof. Run tests with the direct test binary there.
 

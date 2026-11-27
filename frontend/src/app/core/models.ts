@@ -69,6 +69,14 @@ export interface DocumentSummary {
   ocrStatus: string;
   archiveId: string | null;
   createdAt: string;
+  // Phase 3 OCR / receipt extraction — null until OCR runs.
+  ocrText?: string | null;
+  ocrConfidence?: number | null;
+  extractedVendor?: string | null;
+  extractedDate?: string | null;
+  extractedTotal?: number | null;
+  extractedCurrency?: string | null;
+  suggestedCategory?: string | null;
 }
 
 export interface DashboardStats {

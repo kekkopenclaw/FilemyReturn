@@ -32,7 +32,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Storage:RootPath"] = _storagePath,
                 // Test-only JWT key: Program.cs refuses to start outside Development with
                 // the DEV_ONLY placeholder, so tests must supply a real (test-only) key.
-                ["Jwt:Key"] = "TestOnlyJwtKeyForIntegrationTests0123456789abcdef"
+                ["Jwt:Key"] = "TestOnlyJwtKeyForIntegrationTests0123456789abcdef",
+                // The in-process OCR worker polls every 10s in production; in tests the
+                // poll is effectively disabled so tests drive processing explicitly via
+                // OcrProcessingService (otherwise the worker could claim a seeded document
+                // before the test's direct ProcessAsync call and make its result flaky).
+                // That the worker is wired in at all is proven by Worker_IsRegistered below.
+                ["Worker:PollIntervalSeconds"] = "3600"
             }));
         builder.ConfigureServices(services =>
         {

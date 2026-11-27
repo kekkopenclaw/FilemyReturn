@@ -56,10 +56,12 @@ public class DocumentService
 
     private static DocumentDto ToDto(Document d) => DocumentDtos.ToDto(d);
 
-    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default)
+    /// <summary>Lists a workspace's documents, newest first. Optional <paramref name="search"/>
+    /// matches file name, extracted vendor or the full OCR text (Phase 3 full-text search).</summary>
+    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
-        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct)).Select(ToDto).ToList();
+        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct, search)).Select(ToDto).ToList();
     }
 
     public async Task<DocumentDto> GetAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)

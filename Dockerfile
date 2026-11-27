@@ -36,7 +36,11 @@ RUN dotnet publish src/WebApi/DocuArchive.Api.csproj -c Release -o /app/publish 
 # ---- Stage 3: runtime (ASP.NET Core 10, no SDK) ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# OCR tools (Phase 3, free / Apache 2.0): Tesseract does the text extraction,
+# poppler-utils handles PDFs (pdftotext for embedded text, pdftoppm to render
+# scanned pages). Without these the engine reports Success=false and uploads
+# stay Failed — see docs/OCR.md. curl is for the Render healthcheck.
+RUN apt-get update && apt-get install -y --no-install-recommends curl tesseract-ocr poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=api-build /app/publish ./
 # Writable data dir for the SQLite DB + uploaded files (Render free disk is ephemeral — see DEPLOY.md).

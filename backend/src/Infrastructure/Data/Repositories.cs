@@ -85,10 +85,26 @@ public class EfDocumentRepository : IDocumentRepository
     public Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken ct = default)
         => _db.Documents.FirstOrDefaultAsync(d => d.WorkspaceId == workspaceId && d.Sha256Hash == sha256Hash, ct);
 
-    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default)
+    /// <summary>
+    /// Lists a workspace's documents, newest first. When <paramref name="search"/> is given,
+    /// matches file name, extracted vendor or the full OCR text (Phase 3 full-text search).
+    /// The match runs in the database (EF.Functions.Like — case-insensitive for ASCII in
+    /// SQLite, and in PostgreSQL with a case-insensitive collation) and is always scoped
+    /// to this workspace, so a search can never leak another workspace's documents.
+    /// </summary>
+    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null)
     {
         var query = _db.Documents.Where(d => d.WorkspaceId == workspaceId);
         if (archiveId.HasValue) query = query.Where(d => d.ArchiveId == archiveId.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            // Escape LIKE wildcards so the user's text is matched literally.
+            var term = "%" + search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            query = query.Where(d =>
+                EF.Functions.Like(d.OriginalFileName, term, "\\")
+                || (d.OcrText != null && EF.Functions.Like(d.OcrText, term, "\\"))
+                || (d.ExtractedVendor != null && EF.Functions.Like(d.ExtractedVendor, term, "\\")));
+        }
         return query.OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
     }
 

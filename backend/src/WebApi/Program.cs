@@ -2,9 +2,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using DocuArchive.Application;
+using DocuArchive.Domain;
 using DocuArchive.Infrastructure;
 using DocuArchive.Infrastructure.Data;
 using DocuArchive.WebApi.Middleware;
+using DocuArchive.Worker;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
@@ -46,6 +48,14 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 builder.Services.Configure<StorageSettings>(builder.Configuration.GetSection("Storage"));
 
 builder.Services.AddInfrastructure(builder.Configuration);
+// Phase 3 OCR: the worker runs inside this process on the single-container deploy
+// (Render Free = one container; the standalone Worker host is for separate scaling only).
+// The in-memory queue is only a fast wake-up — the DB Queued status is the durable trigger,
+// so the worker also recovers jobs after a restart. Without these three lines uploads
+// sit at Queued forever on Render. See docs/OCR.md.
+builder.Services.Configure<OcrWorkerOptions>(builder.Configuration.GetSection("Worker"));
+builder.Services.AddSingleton<IOcrJobQueue, ChannelOcrJobQueue>();
+builder.Services.AddHostedService<OcrWorker>();
 builder.Services.AddControllers();
 // Health: /health is liveness only (process up, no DB dependency) so a database
 // outage does not make the container look dead; /health/ready includes the DB check.
