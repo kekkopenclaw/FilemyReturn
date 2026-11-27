@@ -183,9 +183,9 @@ namespace DocuArchive.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("OcrStatus");
-
                     b.HasIndex("NeedsReview");
+
+                    b.HasIndex("OcrStatus");
 
                     b.HasIndex("WorkspaceId");
 
@@ -503,7 +503,7 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Workspace");
                 });
