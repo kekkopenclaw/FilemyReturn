@@ -51,8 +51,16 @@ public class Document
     public decimal? ExtractedTotal { get; set; }
     /// <summary>Currency symbol found next to the total (£, $, € …), or null.</summary>
     public string? ExtractedCurrency { get; set; }
-    /// <summary>Category suggested from the extracted fields (currently "Receipt" only). A suggestion, not a fact — the UI must show it as such.</summary>
+    /// <summary>Category suggested from the OCR text by <c>DocumentClassifier</c> (Phase 3). One of Receipt, Invoice, Contract, BankStatement, Letter, Other. A suggestion, not a fact — the UI must show it as such.</summary>
     public string? SuggestedCategory { get; set; }
+    /// <summary>Confidence (0-100) of <see cref="SuggestedCategory"/> from <c>DocumentClassifier</c>. Null until OCR + classification run.</summary>
+    public double? ClassificationConfidence { get; set; }
+    /// <summary>Human-readable reason for the suggested category (which signals matched).</summary>
+    public string? ClassificationReason { get; set; }
+    /// <summary>True when classification confidence is below the review threshold or no category matched: a human must confirm or correct the category.</summary>
+    public bool NeedsReview { get; set; }
+    /// <summary>Category confirmed or corrected by a human reviewer (ConfirmCategory endpoint). Null until reviewed; when set it overrides <see cref="SuggestedCategory"/>.</summary>
+    public string? ConfirmedCategory { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public required string CreatedById { get; set; }
