@@ -33,6 +33,37 @@ public class ArchivesController : ControllerBase
         => Ok(await _archives.GetAsync(ControllerUser.Id(this), workspaceId, archiveId, ct));
 }
 
+/// <summary>Tag endpoints, nested under a workspace (Phase 4 organisation). Thin controller — logic lives in <see cref="TagService"/> (Application).</summary>
+[ApiController]
+[Route("api/workspaces/{workspaceId:guid}/tags")]
+[Authorize]
+[EnableRateLimiting("default")]
+public class TagsController : ControllerBase
+{
+    private readonly TagService _tags;
+    public TagsController(TagService tags) => _tags = tags;
+
+    [HttpGet]
+    public async Task<ActionResult<List<TagDto>>> List(Guid workspaceId, CancellationToken ct)
+        => Ok(await _tags.ListAsync(ControllerUser.Id(this), workspaceId, ct));
+
+    /// <summary>Creates a tag. ReadOnly members cannot create (StandardUser+ required). 400 on a duplicate name or a bad colour.</summary>
+    [HttpPost]
+    public async Task<ActionResult<TagDto>> Create(Guid workspaceId, [FromBody] CreateTagRequest request, CancellationToken ct)
+    {
+        var tag = await _tags.CreateAsync(ControllerUser.Id(this), workspaceId, request, ct);
+        return CreatedAtAction(nameof(List), new { workspaceId }, tag);
+    }
+
+    /// <summary>Deletes a tag (and all its document assignments). StandardUser+ required.</summary>
+    [HttpDelete("{tagId:guid}")]
+    public async Task<IActionResult> Delete(Guid workspaceId, Guid tagId, CancellationToken ct)
+    {
+        await _tags.DeleteAsync(ControllerUser.Id(this), workspaceId, tagId, ct);
+        return NoContent();
+    }
+}
+
 /// <summary>Document read/upload/download endpoints (Phase 2 adds upload + download).</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/documents")]
@@ -49,8 +80,8 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, [FromQuery] bool? needsReview, CancellationToken ct)
-        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search, needsReview));
+    public async Task<ActionResult<List<DocumentDto>>> List(Guid workspaceId, [FromQuery] Guid? archiveId, [FromQuery] string? search, [FromQuery] bool? needsReview, [FromQuery] Guid? tagId, CancellationToken ct)
+        => Ok(await _documents.ListAsync(ControllerUser.Id(this), workspaceId, archiveId, ct, search, needsReview, tagId));
 
     [HttpGet("{documentId:guid}")]
     public async Task<ActionResult<DocumentDto>> Get(Guid workspaceId, Guid documentId, CancellationToken ct)
@@ -110,6 +141,30 @@ public class DocumentsController : ControllerBase
     [HttpPost("{documentId:guid}/confirm-category")]
     public async Task<ActionResult<DocumentDto>> ConfirmCategory(Guid workspaceId, Guid documentId, [FromBody] ConfirmCategoryRequest request, CancellationToken ct)
         => Ok(await _documents.ConfirmCategoryAsync(ControllerUser.Id(this), workspaceId, documentId, request.Category, ct));
+
+    /// <summary>
+    /// Tags assigned to a document (Phase 4). Members only.
+    /// </summary>
+    [HttpGet("{documentId:guid}/tags")]
+    public async Task<ActionResult<List<TagDto>>> ListTags(Guid workspaceId, Guid documentId, [FromServices] TagService tags, CancellationToken ct)
+        => Ok(await tags.ListDocumentTagsAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
+
+    /// <summary>
+    /// Assigns a tag to a document (Phase 4). StandardUser+ only. Idempotent — assigning
+    /// a tag that is already there returns the current tag list. Returns 404 when the
+    /// document or the tag does not exist in this workspace.
+    /// </summary>
+    [HttpPost("{documentId:guid}/tags")]
+    public async Task<ActionResult<List<TagDto>>> AssignTag(Guid workspaceId, Guid documentId, [FromBody] AssignTagRequest request, [FromServices] TagService tags, CancellationToken ct)
+        => Ok(await tags.AssignAsync(ControllerUser.Id(this), workspaceId, documentId, request.TagId, ct));
+
+    /// <summary>
+    /// Removes a tag from a document (Phase 4). StandardUser+ only. Idempotent — removing
+    /// a tag that is not there is a no-op.
+    /// </summary>
+    [HttpDelete("{documentId:guid}/tags/{tagId:guid}")]
+    public async Task<ActionResult<List<TagDto>>> UnassignTag(Guid workspaceId, Guid documentId, Guid tagId, [FromServices] TagService tags, CancellationToken ct)
+        => Ok(await tags.UnassignAsync(ControllerUser.Id(this), workspaceId, documentId, tagId, ct));
 }
 
 /// <summary>Upload history for a workspace (newest first, with uploader).</summary>

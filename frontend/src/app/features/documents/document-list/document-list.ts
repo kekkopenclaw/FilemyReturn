@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
-import { DocumentSummary } from '../../../core/models';
+import { DocumentSummary, Tag } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
 import { DocumentViewer } from '../document-viewer/document-viewer';
 import { EmptyState } from '../../../shared/empty-state/empty-state';
@@ -80,6 +80,19 @@ export class DocumentList {
   protected readonly chosenCategory: Record<string, string> = {};
   protected readonly categories = DOCUMENT_CATEGORIES;
   protected readonly categoryLabel = categoryLabel;
+  /** Phase 4 organisation: workspace tags, and the tag filter (null = all). */
+  protected readonly tags = signal<Tag[]>([]);
+  protected readonly selectedTagId = signal<string | null>(null);
+  protected readonly newTagName = signal('');
+  protected readonly newTagColour = signal('#0e7c66');
+  protected readonly tagError = signal<string | null>(null);
+  protected readonly creatingTag = signal(false);
+  protected readonly deletingTagId = signal<string | null>(null);
+  /** Phase 4: document whose tags are being changed (assign/unassign). */
+  protected readonly taggingId = signal<string | null>(null);
+  protected readonly tagOpError = signal<string | null>(null);
+  /** Tag chosen in a document's "Add a tag" dropdown, per document id. */
+  protected readonly chosenTag: Record<string, string> = {};
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -94,8 +107,11 @@ export class DocumentList {
       const workspaceId = this.workspaceService.selectedWorkspaceId();
       if (workspaceId) {
         this.load(workspaceId);
+        this.loadTags(workspaceId);
       } else {
         this.documents.set([]);
+        this.tags.set([]);
+        this.selectedTagId.set(null);
         this.error.set(null);
       }
     });
@@ -185,6 +201,128 @@ export class DocumentList {
 
   protected onCategoryChosen(doc: DocumentSummary, event: Event): void {
     this.chosenCategory[doc.id] = (event.target as HTMLSelectElement).value;
+  }
+
+  /** Phase 4 organisation: load the workspace's tags. */
+  private loadTags(workspaceId: string): void {
+    this.api.getTags(workspaceId).subscribe({
+      next: (tags) => this.tags.set(tags),
+      error: () => this.tags.set([]),
+    });
+  }
+
+  /** Phase 4: filter the list to documents carrying one tag (or all). */
+  protected onTagFilterChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedTagId.set(value === '' ? null : value);
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (workspaceId) this.load(workspaceId);
+  }
+
+  /** Phase 4: create a tag in this workspace. */
+  protected createTag(): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    const name = this.newTagName().trim();
+    if (!workspaceId || this.creatingTag()) return;
+    if (!name) {
+      this.tagError.set('Tag name is required.');
+      return;
+    }
+    this.creatingTag.set(true);
+    this.tagError.set(null);
+    this.api.createTag(workspaceId, name, this.newTagColour()).subscribe({
+      next: (tag) => {
+        this.creatingTag.set(false);
+        this.tags.set([...this.tags(), tag].sort((a, b) => a.name.localeCompare(b.name)));
+        this.newTagName.set('');
+      },
+      error: (err: unknown) => {
+        this.creatingTag.set(false);
+        this.tagError.set(
+          err instanceof HttpErrorResponse && err.status === 400
+            ? 'Could not create the tag. Check the name is unique and 1–64 characters.'
+            : 'Could not create the tag. Please try again.',
+        );
+      },
+    });
+  }
+
+  /** Phase 4: delete a tag (and all its document assignments). */
+  protected deleteTag(tag: Tag): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.deletingTagId()) return;
+    this.deletingTagId.set(tag.id);
+    this.tagError.set(null);
+    this.api.deleteTag(workspaceId, tag.id).subscribe({
+      next: () => {
+        this.deletingTagId.set(null);
+        this.tags.set(this.tags().filter((t) => t.id !== tag.id));
+        if (this.selectedTagId() === tag.id) {
+          this.selectedTagId.set(null);
+          this.load(workspaceId);
+        }
+      },
+      error: () => {
+        this.deletingTagId.set(null);
+        this.tagError.set('Could not delete the tag. Please try again.');
+      },
+    });
+  }
+
+  /** Phase 4: tags of this workspace not yet on the document. */
+  protected availableTags(doc: DocumentSummary): Tag[] {
+    const assigned = new Set((doc.tags ?? []).map((t) => t.id));
+    return this.tags().filter((t) => !assigned.has(t.id));
+  }
+
+  protected onTagChosen(doc: DocumentSummary, event: Event): void {
+    this.chosenTag[doc.id] = (event.target as HTMLSelectElement).value;
+  }
+
+  /** Phase 4: assign the chosen tag to a document. */
+  protected assignTag(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    const tagId = this.chosenTag[doc.id];
+    if (!workspaceId || !tagId || this.taggingId()) return;
+    this.taggingId.set(doc.id);
+    this.tagOpError.set(null);
+    this.api.assignTag(workspaceId, doc.id, tagId).subscribe({
+      next: (tags) => {
+        this.taggingId.set(null);
+        delete this.chosenTag[doc.id];
+        this.updateDocTags(doc.id, tags);
+      },
+      error: () => {
+        this.taggingId.set(null);
+        this.tagOpError.set('Could not add the tag. Please try again.');
+      },
+    });
+  }
+
+  /** Phase 4: remove a tag from a document. */
+  protected unassignTag(doc: DocumentSummary, tag: Tag): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.taggingId()) return;
+    this.taggingId.set(doc.id);
+    this.tagOpError.set(null);
+    this.api.unassignTag(workspaceId, doc.id, tag.id).subscribe({
+      next: (tags) => {
+        this.taggingId.set(null);
+        this.updateDocTags(doc.id, tags);
+      },
+      error: () => {
+        this.taggingId.set(null);
+        this.tagOpError.set('Could not remove the tag. Please try again.');
+      },
+    });
+  }
+
+  private updateDocTags(documentId: string, tags: Tag[]): void {
+    this.documents.set(
+      this.documents().map((d) =>
+        d.id === documentId ? { ...d, tags } : d,
+      ),
+    );
   }
 
   /** Phase 3: search the workspace's documents (file name, vendor, OCR text). */
@@ -296,7 +434,12 @@ export class DocumentList {
     }
     this.error.set(null);
     this.api
-      .getDocuments(workspaceId, this.searchTerm(), this.reviewOnly() || undefined)
+      .getDocuments(
+        workspaceId,
+        this.searchTerm(),
+        this.reviewOnly() || undefined,
+        this.selectedTagId() ?? undefined,
+      )
       .subscribe({
       next: (docs) => {
         this.documents.set(docs);

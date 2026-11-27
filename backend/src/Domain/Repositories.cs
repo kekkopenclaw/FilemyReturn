@@ -28,6 +28,22 @@ public interface IArchiveRepository
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Persistence for tags (always scoped to a workspace) and their document assignments.</summary>
+public interface ITagRepository
+{
+    Task<Tag> AddAsync(Tag tag, CancellationToken cancellationToken = default);
+    Task<Tag?> GetByIdAsync(Guid workspaceId, Guid tagId, CancellationToken cancellationToken = default);
+    /// <summary>Case-insensitive name lookup (for duplicate detection).</summary>
+    Task<Tag?> GetByNameAsync(Guid workspaceId, string name, CancellationToken cancellationToken = default);
+    Task<List<Tag>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Tag tag, CancellationToken cancellationToken = default);
+    Task<DocumentTag?> GetAssignmentAsync(Guid workspaceId, Guid documentId, Guid tagId, CancellationToken cancellationToken = default);
+    Task AddAssignmentAsync(DocumentTag assignment, CancellationToken cancellationToken = default);
+    Task RemoveAssignmentAsync(DocumentTag assignment, CancellationToken cancellationToken = default);
+    /// <summary>Tags assigned to one document, in tag-name order.</summary>
+    Task<List<Tag>> ListTagsForDocumentAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support; Phase 3 adds OCR claim/update.</summary>
 public interface IDocumentRepository
 {
@@ -35,7 +51,7 @@ public interface IDocumentRepository
     Task<Document?> GetByIdAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
     /// <summary>Finds a document in this workspace with the given SHA-256 hash (duplicate detection).</summary>
     Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken cancellationToken = default);
-    Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default, string? search = null, bool? needsReview = null);
+    Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default, string? search = null, bool? needsReview = null, Guid? tagId = null);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>
     Task UpdateAsync(Document document, CancellationToken cancellationToken = default);

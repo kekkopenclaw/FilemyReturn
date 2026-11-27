@@ -53,9 +53,82 @@
     >
       {{ reviewOnly() ? 'Showing needs review — show all' : 'Needs review only' }}
     </button>
+    <label class="tag-filter-label" for="tag-filter">Filter by tag</label>
+    <select
+      id="tag-filter"
+      [value]="selectedTagId() ?? ''"
+      [disabled]="!workspaceService.selectedWorkspaceId()"
+      (change)="onTagFilterChange($event)"
+    >
+      <option value="">All tags</option>
+      @for (tag of tags(); track tag.id) {
+        <option [value]="tag.id">{{ tag.name }}</option>
+      }
+    </select>
   </div>
   @if (confirmError()) {
     <p class="error-banner" role="alert">{{ confirmError() }}</p>
+  }
+
+  <!-- Phase 4 organisation: workspace tags — create and delete. -->
+  @if (workspaceService.selectedWorkspaceId()) {
+    <section class="tag-manager" aria-label="Tags">
+      <h2>Tags</h2>
+      <form
+        class="tag-create"
+        (submit)="$event.preventDefault(); createTag()"
+      >
+        <label class="visually-hidden" for="new-tag-name">New tag name</label>
+        <input
+          id="new-tag-name"
+          type="text"
+          placeholder="New tag name"
+          maxlength="64"
+          [value]="newTagName()"
+          (input)="newTagName.set($any($event.target).value)"
+        />
+        <label class="tag-colour-label" for="new-tag-colour">
+          Colour
+          <input
+            id="new-tag-colour"
+            type="color"
+            [value]="newTagColour()"
+            (input)="newTagColour.set($any($event.target).value)"
+          />
+        </label>
+        <button
+          type="submit"
+          class="btn btn-small btn-primary"
+          [disabled]="creatingTag()"
+        >
+          {{ creatingTag() ? 'Creating…' : 'Create tag' }}
+        </button>
+      </form>
+      @if (tagError()) {
+        <p class="error-banner" role="alert">{{ tagError() }}</p>
+      }
+      @if (tags().length > 0) {
+        <ul class="tag-list">
+          @for (tag of tags(); track tag.id) {
+            <li class="tag-chip">
+              <span class="tag-dot" [style.background]="tag.colour" aria-hidden="true"></span>
+              <span>{{ tag.name }}</span>
+              <button
+                type="button"
+                class="tag-delete"
+                [disabled]="deletingTagId() === tag.id"
+                (click)="deleteTag(tag)"
+                [attr.aria-label]="'Delete tag ' + tag.name"
+              >
+                ×
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="tag-empty">No tags yet — create one to organise documents.</p>
+      }
+    </section>
   }
 
   @if (loading()) {
@@ -85,7 +158,20 @@
         <tbody>
           @for (doc of documents(); track doc.id) {
             <tr>
-              <td class="doc-name">{{ doc.originalFileName }}</td>
+              <td class="doc-name">
+                {{ doc.originalFileName }}
+                <!-- Phase 4: tags assigned to this document. -->
+                @if (doc.tags?.length) {
+                  <span class="doc-tags">
+                    @for (tag of doc.tags; track tag.id) {
+                      <span class="tag-chip tag-chip-small">
+                        <span class="tag-dot" [style.background]="tag.colour" aria-hidden="true"></span>
+                        <span>{{ tag.name }}</span>
+                      </span>
+                    }
+                  </span>
+                }
+              </td>
               <td>{{ doc.mimeType }}</td>
               <td>
                 {{ categoryLabel(effectiveCategory(doc)) }}
@@ -208,6 +294,59 @@
                     } @else {
                       <p class="doc-details-empty">No text was extracted from this document.</p>
                     }
+                    <!-- Phase 4 organisation: assign and remove tags.
+                         Outside the OCR branches — tagging works on any
+                         document, even before OCR has run. -->
+                    <div class="doc-tags-box">
+                      <p class="ocr-label">Tags</p>
+                      @if (doc.tags?.length) {
+                        <ul class="tag-list">
+                          @for (tag of doc.tags; track tag.id) {
+                            <li class="tag-chip">
+                              <span class="tag-dot" [style.background]="tag.colour" aria-hidden="true"></span>
+                              <span>{{ tag.name }}</span>
+                              <button
+                                type="button"
+                                class="tag-delete"
+                                [disabled]="taggingId() === doc.id"
+                                (click)="unassignTag(doc, tag)"
+                                [attr.aria-label]="'Remove tag ' + tag.name + ' from ' + doc.originalFileName"
+                              >
+                                ×
+                              </button>
+                            </li>
+                          }
+                        </ul>
+                      } @else {
+                        <p class="tag-empty">No tags on this document yet.</p>
+                      }
+                      @if (availableTags(doc).length > 0) {
+                        <label class="tag-add-label" for="add-tag-{{ doc.id }}">
+                          Add a tag
+                          <select
+                            id="add-tag-{{ doc.id }}"
+                            [value]="chosenTag[doc.id] ?? ''"
+                            (change)="onTagChosen(doc, $event)"
+                          >
+                            <option value="">Choose a tag…</option>
+                            @for (tag of availableTags(doc); track tag.id) {
+                              <option [value]="tag.id">{{ tag.name }}</option>
+                            }
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          class="btn btn-small"
+                          [disabled]="taggingId() === doc.id || !chosenTag[doc.id]"
+                          (click)="assignTag(doc)"
+                        >
+                          {{ taggingId() === doc.id ? 'Adding…' : 'Add tag' }}
+                        </button>
+                      }
+                      @if (tagOpError()) {
+                        <p class="error-banner" role="alert">{{ tagOpError() }}</p>
+                      }
+                    </div>
                   </div>
                 </td>
               </tr>

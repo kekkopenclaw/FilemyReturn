@@ -7,6 +7,7 @@ import {
   AuditLogEntry,
   DashboardStats,
   DocumentSummary,
+  Tag,
   Workspace,
 } from './models';
 
@@ -54,15 +55,18 @@ export class ApiService {
    * Lists a workspace's documents. Optional `search` matches file name,
    * extracted vendor or the full OCR text (Phase 3 full-text search).
    * Optional `needsReview` restricts to the human-review queue.
+   * Optional `tagId` restricts to documents carrying that tag (Phase 4).
    */
   getDocuments(
     workspaceId: string,
     search?: string,
     needsReview?: boolean,
+    tagId?: string,
   ): Observable<DocumentSummary[]> {
     const params = new URLSearchParams();
     if (search && search.trim()) params.set('search', search.trim());
     if (needsReview) params.set('needsReview', 'true');
+    if (tagId) params.set('tagId', tagId);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.http.get<DocumentSummary[]>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents${query}`,
@@ -139,6 +143,71 @@ export class ApiService {
     return this.http.get(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/preview`,
       { responseType: 'blob' },
+    );
+  }
+
+  // -- Tags (Phase 4 organisation) ----------------------------------------
+
+  /** Lists a workspace's tags, in name order. */
+  getTags(workspaceId: string): Observable<Tag[]> {
+    return this.http.get<Tag[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/tags`,
+    );
+  }
+
+  /**
+   * Creates a tag. `colour` is an optional #RRGGBB hex value — the backend
+   * picks a deterministic palette colour when omitted. 400 on a duplicate
+   * name or a bad colour.
+   */
+  createTag(
+    workspaceId: string,
+    name: string,
+    colour?: string,
+  ): Observable<Tag> {
+    return this.http.post<Tag>(
+      `${this.baseUrl}/workspaces/${workspaceId}/tags`,
+      { name, colour: colour || null },
+    );
+  }
+
+  /** Deletes a tag and all its document assignments. */
+  deleteTag(workspaceId: string, tagId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/workspaces/${workspaceId}/tags/${tagId}`,
+    );
+  }
+
+  /** Tags assigned to one document, in name order. */
+  getDocumentTags(workspaceId: string, documentId: string): Observable<Tag[]> {
+    return this.http.get<Tag[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/tags`,
+    );
+  }
+
+  /**
+   * Assigns a tag to a document. Idempotent — assigning a tag that is
+   * already there returns the current tag list.
+   */
+  assignTag(
+    workspaceId: string,
+    documentId: string,
+    tagId: string,
+  ): Observable<Tag[]> {
+    return this.http.post<Tag[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/tags`,
+      { tagId },
+    );
+  }
+
+  /** Removes a tag from a document. Idempotent. Returns the remaining tags. */
+  unassignTag(
+    workspaceId: string,
+    documentId: string,
+    tagId: string,
+  ): Observable<Tag[]> {
+    return this.http.delete<Tag[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/tags/${tagId}`,
     );
   }
 

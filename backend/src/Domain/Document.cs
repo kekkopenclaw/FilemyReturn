@@ -30,6 +30,8 @@ public class Document
     public Workspace? Workspace { get; set; }
     public Guid? ArchiveId { get; set; }
     public Archive? Archive { get; set; }
+    /// <summary>Tags assigned to this document (Phase 4). Empty when none; null only when the query did not load them.</summary>
+    public ICollection<DocumentTag> DocumentTags { get; set; } = new List<DocumentTag>();
 
     public required string OriginalFileName { get; set; }
     /// <summary>Opaque storage key (never a user-supplied path). See <see cref="IDocumentStorage"/>.</summary>

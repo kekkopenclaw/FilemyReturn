@@ -11,6 +11,7 @@ public class Workspace
 
     public ICollection<WorkspaceMembership> Memberships { get; set; } = new List<WorkspaceMembership>();
     public ICollection<Archive> Archives { get; set; } = new List<Archive>();
+    public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<Document> Documents { get; set; } = new List<Document>();
 }
 

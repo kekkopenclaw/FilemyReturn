@@ -52,6 +52,15 @@ export interface Archive {
   createdAt: string;
 }
 
+/** A workspace tag (Phase 4 organisation). Colour is always set (explicit or palette default). */
+export interface Tag {
+  id: string;
+  workspaceId: string;
+  name: string;
+  colour: string;
+  createdAt: string;
+}
+
 /** Backend DocumentStatus enum: Uploaded / Processing / Ready / Failed. */
 export type DocumentStatus =
   | 'Uploaded'
@@ -82,6 +91,8 @@ export interface DocumentSummary {
   classificationReason?: string | null;
   needsReview?: boolean;
   confirmedCategory?: string | null;
+  // Phase 4 organisation — tags assigned to this document (empty when none).
+  tags?: Tag[];
 }
 
 export interface DashboardStats {

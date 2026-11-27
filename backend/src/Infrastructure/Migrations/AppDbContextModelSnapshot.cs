@@ -195,6 +195,24 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.ToTable("Documents");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.DocumentTag", b =>
+                {
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("DocumentId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("DocumentTags");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -229,6 +247,37 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("DocuArchive.Domain.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Colour")
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId");
+
+                    b.HasIndex("WorkspaceId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("DocuArchive.Domain.Workspace", b =>
@@ -526,6 +575,36 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.DocumentTag", b =>
+                {
+                    b.HasOne("DocuArchive.Domain.Document", "Document")
+                        .WithMany("DocumentTags")
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DocuArchive.Domain.Tag", "Tag")
+                        .WithMany("DocumentTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Document");
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("DocuArchive.Domain.Tag", b =>
+                {
+                    b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
+                        .WithMany("Tags")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.WorkspaceMembership", b =>
                 {
                     b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
@@ -593,6 +672,16 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("Documents");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.Document", b =>
+                {
+                    b.Navigation("DocumentTags");
+                });
+
+            modelBuilder.Entity("DocuArchive.Domain.Tag", b =>
+                {
+                    b.Navigation("DocumentTags");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.Workspace", b =>
                 {
                     b.Navigation("Archives");
@@ -600,6 +689,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("Memberships");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

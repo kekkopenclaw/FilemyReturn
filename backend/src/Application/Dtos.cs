@@ -49,6 +49,16 @@ public record CreateArchiveRequest(
 
 public record ArchiveDto(Guid Id, Guid WorkspaceId, string Name, string? Description, DateTime CreatedAt);
 
+/// <summary>A workspace tag (Phase 4 organisation). Colour is always set (explicit or palette default).</summary>
+public record TagDto(Guid Id, Guid WorkspaceId, string Name, string Colour, DateTime CreatedAt);
+
+public record CreateTagRequest(
+    [Required, MinLength(1), MaxLength(64)] string Name,
+    string? Colour);
+
+/// <summary>Assign a tag to a document. Body: { "tagId": "…" }.</summary>
+public record AssignTagRequest([Required] Guid TagId);
+
 public record DocumentDto(
     Guid Id, Guid WorkspaceId, Guid? ArchiveId, string OriginalFileName,
     string Sha256Hash, long FileSizeBytes, string MimeType,
@@ -60,7 +70,9 @@ public record DocumentDto(
     string? SuggestedCategory = null,
     // Phase 3 classification — null/false until OCR + classification run.
     double? ClassificationConfidence = null, string? ClassificationReason = null,
-    bool NeedsReview = false, string? ConfirmedCategory = null);
+    bool NeedsReview = false, string? ConfirmedCategory = null,
+    // Phase 4 organisation — tags assigned to this document (empty when none).
+    List<TagDto>? Tags = null);
 
 public record DashboardDto(
     Guid WorkspaceId, int ArchiveCount, int DocumentCount, int MemberCount,

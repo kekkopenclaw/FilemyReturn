@@ -19,6 +19,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<WorkspaceMembership> WorkspaceMemberships => Set<WorkspaceMembership>();
     public DbSet<Archive> Archives => Set<Archive>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<DocumentTag> DocumentTags => Set<DocumentTag>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -51,6 +53,27 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(a => a.WorkspaceId);
             e.HasIndex(a => a.CreatedAt);
             e.HasOne(a => a.Workspace).WithMany(w => w.Archives).HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Tag>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.Property(t => t.Name).IsRequired().HasMaxLength(64);
+            e.Property(t => t.Colour).HasMaxLength(7);
+            e.HasIndex(t => t.WorkspaceId);
+            // Exact-duplicate guard (case-sensitive in both providers); the service
+            // enforces case-insensitive uniqueness before insert, this catches races.
+            e.HasIndex(t => new { t.WorkspaceId, t.Name }).IsUnique();
+            e.HasOne(t => t.Workspace).WithMany(w => w.Tags).HasForeignKey(t => t.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DocumentTag>(e =>
+        {
+            // Composite key: the same tag cannot be assigned to the same document twice.
+            e.HasKey(dt => new { dt.DocumentId, dt.TagId });
+            e.HasIndex(dt => dt.TagId);
+            e.HasOne(dt => dt.Document).WithMany(d => d.DocumentTags).HasForeignKey(dt => dt.DocumentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(dt => dt.Tag).WithMany(t => t.DocumentTags).HasForeignKey(dt => dt.TagId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Document>(e =>

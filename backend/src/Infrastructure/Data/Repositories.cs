@@ -85,6 +85,70 @@ public class EfArchiveRepository : IArchiveRepository
         => _db.Archives.CountAsync(a => a.WorkspaceId == workspaceId, ct);
 }
 
+public class EfTagRepository : ITagRepository
+{
+    private readonly AppDbContext _db;
+    public EfTagRepository(AppDbContext db) => _db = db;
+
+    public async Task<Tag> AddAsync(Tag tag, CancellationToken ct = default)
+    {
+        _db.Tags.Add(tag);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // RACE: two identical tag names passed the duplicate pre-check at the same
+            // time and the unique index (WorkspaceId, Name) rejected the second insert.
+            // That is a duplicate (400), not a server error — translate it; anything else rethrows.
+            var duplicate = await GetByNameAsync(tag.WorkspaceId, tag.Name, ct);
+            if (duplicate is not null) throw new DuplicateTagException(tag.Name);
+            throw;
+        }
+        return tag;
+    }
+
+    public Task<Tag?> GetByIdAsync(Guid workspaceId, Guid tagId, CancellationToken ct = default)
+        => _db.Tags.FirstOrDefaultAsync(t => t.WorkspaceId == workspaceId && t.Id == tagId, ct);
+
+    public Task<Tag?> GetByNameAsync(Guid workspaceId, string name, CancellationToken ct = default)
+    {
+        var lowered = name.ToLowerInvariant();
+        return _db.Tags.FirstOrDefaultAsync(t => t.WorkspaceId == workspaceId && t.Name.ToLower() == lowered, ct);
+    }
+
+    public Task<List<Tag>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
+        => _db.Tags.Where(t => t.WorkspaceId == workspaceId).OrderBy(t => t.Name).ToListAsync(ct);
+
+    public async Task DeleteAsync(Tag tag, CancellationToken ct = default)
+    {
+        _db.Tags.Remove(tag);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public Task<DocumentTag?> GetAssignmentAsync(Guid workspaceId, Guid documentId, Guid tagId, CancellationToken ct = default)
+        => _db.DocumentTags.FirstOrDefaultAsync(dt => dt.DocumentId == documentId && dt.TagId == tagId
+            && dt.Tag != null && dt.Tag.WorkspaceId == workspaceId, ct);
+
+    public async Task AddAssignmentAsync(DocumentTag assignment, CancellationToken ct = default)
+    {
+        _db.DocumentTags.Add(assignment);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveAssignmentAsync(DocumentTag assignment, CancellationToken ct = default)
+    {
+        _db.DocumentTags.Remove(assignment);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public Task<List<Tag>> ListTagsForDocumentAsync(Guid workspaceId, Guid documentId, CancellationToken ct = default)
+        => _db.DocumentTags.Where(dt => dt.DocumentId == documentId && dt.Tag != null && dt.Tag.WorkspaceId == workspaceId)
+            .Select(dt => dt.Tag!)
+            .OrderBy(t => t.Name).ToListAsync(ct);
+}
+
 public class EfDocumentRepository : IDocumentRepository
 {
     private readonly AppDbContext _db;
@@ -110,7 +174,9 @@ public class EfDocumentRepository : IDocumentRepository
     }
 
     public Task<Document?> GetByIdAsync(Guid workspaceId, Guid documentId, CancellationToken ct = default)
-        => _db.Documents.FirstOrDefaultAsync(d => d.WorkspaceId == workspaceId && d.Id == documentId, ct);
+        => _db.Documents
+            .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .FirstOrDefaultAsync(d => d.WorkspaceId == workspaceId && d.Id == documentId, ct);
 
     public Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken ct = default)
         => _db.Documents.FirstOrDefaultAsync(d => d.WorkspaceId == workspaceId && d.Sha256Hash == sha256Hash, ct);
@@ -121,11 +187,16 @@ public class EfDocumentRepository : IDocumentRepository
     /// The match runs in the database (EF.Functions.Like — case-insensitive for ASCII in
     /// SQLite, and in PostgreSQL with a case-insensitive collation) and is always scoped
     /// to this workspace, so a search can never leak another workspace's documents.
+    /// When <paramref name="tagId"/> is given, only documents carrying that tag are returned.
+    /// Tags are always loaded with the documents (one join) so the DTO can list them.
     /// </summary>
-    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null)
+    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null, Guid? tagId = null)
     {
-        var query = _db.Documents.Where(d => d.WorkspaceId == workspaceId);
+        var query = _db.Documents
+            .Include(d => d.DocumentTags).ThenInclude(dt => dt.Tag)
+            .Where(d => d.WorkspaceId == workspaceId);
         if (archiveId.HasValue) query = query.Where(d => d.ArchiveId == archiveId.Value);
+        if (tagId.HasValue) query = query.Where(d => d.DocumentTags.Any(dt => dt.TagId == tagId.Value));
         if (needsReview.HasValue) query = query.Where(d => d.NeedsReview == needsReview.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {

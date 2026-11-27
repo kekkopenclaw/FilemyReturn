@@ -59,11 +59,12 @@ public class DocumentService
 
     /// <summary>Lists a workspace's documents, newest first. Optional <paramref name="search"/>
     /// matches file name, extracted vendor or the full OCR text (Phase 3 full-text search).
-    /// Optional <paramref name="needsReview"/> restricts to the human-review queue.</summary>
-    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null)
+    /// Optional <paramref name="needsReview"/> restricts to the human-review queue.
+    /// Optional <paramref name="tagId"/> restricts to documents carrying that tag (Phase 4).</summary>
+    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null, Guid? tagId = null)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
-        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct, search, needsReview)).Select(ToDto).ToList();
+        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct, search, needsReview, tagId)).Select(ToDto).ToList();
     }
 
     /// <summary>

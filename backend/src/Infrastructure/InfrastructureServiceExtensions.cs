@@ -54,6 +54,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IUserIdentityService, IdentityUserService>();
         services.AddScoped<IWorkspaceRepository, EfWorkspaceRepository>();
         services.AddScoped<IArchiveRepository, EfArchiveRepository>();
+        services.AddScoped<ITagRepository, EfTagRepository>();
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
         services.AddScoped<IAuditRepository, EfAuditRepository>();
         services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
