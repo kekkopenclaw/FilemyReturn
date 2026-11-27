@@ -44,7 +44,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl tesseract-
     && rm -rf /var/lib/apt/lists/*
 COPY --from=api-build /app/publish ./
 # Writable data dir for the SQLite DB + uploaded files (Render free disk is ephemeral — see DEPLOY.md).
-RUN mkdir -p /app/data/storage
+RUN mkdir -p /app/data/storage && chown -R app:app /app/data
+# SECURITY: never run as root — the image ships a non-root "app" user (aspnet image).
+# The data dir above is the only writable path the app needs.
+USER app
 # Listen on 8080 by default (docker compose maps 5000:8080 and healthchecks :8080).
 # Program.cs calls UseUrls($PORT) when $PORT is set, which takes precedence over
 # ASPNETCORE_URLS — so on Render (which injects $PORT) the app still listens on $PORT,
