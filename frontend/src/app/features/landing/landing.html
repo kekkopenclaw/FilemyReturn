@@ -1,0 +1,128 @@
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="landing-topbar">
+  <a class="brand" routerLink="/" aria-label="DocuArchive home">
+    <span class="brand-mark" aria-hidden="true">D</span>
+    <span class="brand-name">DocuArchive</span>
+  </a>
+  <nav class="topbar-nav" aria-label="Landing page sections">
+    <a href="#how">How it works</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#security">Security</a>
+  </nav>
+  <div class="topbar-actions">
+    <a class="btn btn-ghost" routerLink="/login">Log in</a>
+    <a class="btn btn-primary" routerLink="/register">Get started</a>
+  </div>
+</header>
+
+<main id="main-content">
+  <!-- Hero -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">Secure document digitisation &amp; archive management</p>
+        <h1 id="hero-heading">
+          Lost a receipt again?<br />
+          <span class="hero-accent">Scan it. Done.</span>
+        </h1>
+        <p class="hero-sub">
+          DocuArchive reads your receipts and documents — the date, the shop,
+          the amount — categorises them, files them, and finds them in seconds
+          when you search.
+        </p>
+        <p class="hero-ctas">
+          <a class="btn btn-primary btn-large" routerLink="/register">Get started — it&rsquo;s free</a>
+          <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
+        </p>
+        <p class="hero-note">No card required. Your documents stay on your own server.</p>
+      </div>
+
+      <figure class="receipt-card" aria-label="Example of a receipt read by DocuArchive">
+        <figcaption class="receipt-title">Example receipt</figcaption>
+        <dl class="receipt-lines">
+          <div><dt>Shop</dt><dd>Corner Store, High Street</dd></div>
+          <div><dt>Date</dt><dd>27 November 2026</dd></div>
+          <div><dt>Total</dt><dd>&pound;24.50</dd></div>
+          <div><dt>Category</dt><dd>Groceries</dd></div>
+        </dl>
+        <p class="receipt-read">
+          <span class="badge badge-success">Read automatically</span>
+          Date, shop, amount &amp; category — filed and searchable.
+        </p>
+      </figure>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how" aria-labelledby="how-heading">
+    <h2 id="how-heading">How it works</h2>
+    <p class="section-sub">Three steps. No filing cabinet, no spreadsheet, no lost paper.</p>
+    <ol class="steps">
+      <li>
+        <span class="step-number" aria-hidden="true">1</span>
+        <h3>Scan</h3>
+        <p>Upload a receipt or document, or snap a photo of it. Duplicates are spotted automatically.</p>
+      </li>
+      <li>
+        <span class="step-number" aria-hidden="true">2</span>
+        <h3>The software reads it</h3>
+        <p>Date, shop, amount and category are pulled out of the document for you — no typing.</p>
+      </li>
+      <li>
+        <span class="step-number" aria-hidden="true">3</span>
+        <h3>Filed &amp; searchable</h3>
+        <p>It lands in your workspace, organised and ready. Search &ldquo;plumber&rdquo; and find it in seconds.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- Dashboard preview -->
+  <section class="section section-muted" id="dashboard" aria-labelledby="dashboard-heading">
+    <h2 id="dashboard-heading">Your archive, at a glance</h2>
+    <p class="section-sub">Sign in and your dashboard shows the state of every document you own.</p>
+    <div class="dashboard-preview" aria-label="Example dashboard">
+      <div class="preview-stat"><span class="preview-value">128</span><span class="preview-label">Total documents</span></div>
+      <div class="preview-stat"><span class="preview-value">121</span><span class="preview-label">Ready</span></div>
+      <div class="preview-stat"><span class="preview-value">4</span><span class="preview-label">Processing</span></div>
+      <div class="preview-stat"><span class="preview-value">3</span><span class="preview-label">Awaiting OCR</span></div>
+      <div class="preview-stat"><span class="preview-value">2</span><span class="preview-label">Members</span></div>
+      <div class="preview-stat"><span class="preview-value">6</span><span class="preview-label">Archives</span></div>
+    </div>
+    <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
+    <p><a class="btn btn-primary" routerLink="/register">Create your archive</a></p>
+  </section>
+
+  <!-- Security -->
+  <section class="section" id="security" aria-labelledby="security-heading">
+    <h2 id="security-heading">Built to be trusted with your paperwork</h2>
+    <ul class="security-list">
+      <li>
+        <h3>Your files stay yours</h3>
+        <p>Documents are processed on your own server. Nothing is sent to an outside AI service.</p>
+      </li>
+      <li>
+        <h3>Workspaces &amp; roles</h3>
+        <p>Separate workspaces for home and business, with roles that decide who can see, edit or manage each one.</p>
+      </li>
+      <li>
+        <h3>Full audit trail</h3>
+        <p>Every upload, view and change is recorded, so you can always see what happened to a document and when.</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Final call to action -->
+  <section class="cta" aria-labelledby="cta-heading">
+    <h2 id="cta-heading">Start filing in seconds.</h2>
+    <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
+    <p>
+      <a class="btn btn-primary btn-large" routerLink="/register">Get started</a>
+      <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
+    </p>
+  </section>
+</main>
+
+<footer class="landing-footer">
+  <p>DocuArchive — Secure document digitisation &amp; archive management.</p>
+</footer>

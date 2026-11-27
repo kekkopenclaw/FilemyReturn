@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { landingGuard } from './core/landing.guard';
 import { ChangePassword } from './features/auth/change-password/change-password';
 import { Login } from './features/auth/login/login';
 import { Register } from './features/auth/register/register';
+import { Landing } from './features/landing/landing';
 import { ArchiveList } from './features/archives/archive-list/archive-list';
 import { AuditLog } from './features/audit/audit-log/audit-log';
 import { Dashboard } from './features/dashboard/dashboard';
@@ -11,6 +13,8 @@ import { WorkspaceList } from './features/workspaces/workspace-list/workspace-li
 import { AppShell } from './shared/app-shell/app-shell';
 
 export const routes: Routes = [
+  // Public home page: signed-in users are bounced to /dashboard by the guard.
+  { path: '', component: Landing, canActivate: [landingGuard] },
   { path: 'login', component: Login },
   { path: 'register', component: Register },
   // Public on purpose: the first-login flow (MustChangePassword) has no
@@ -21,7 +25,6 @@ export const routes: Routes = [
     component: AppShell,
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: Dashboard },
       { path: 'workspaces', component: WorkspaceList },
       { path: 'documents', component: DocumentList },
@@ -29,5 +32,5 @@ export const routes: Routes = [
       { path: 'audit-logs', component: AuditLog },
     ],
   },
-  { path: '**', redirectTo: '/dashboard' },
+  { path: '**', redirectTo: '' },
 ];
