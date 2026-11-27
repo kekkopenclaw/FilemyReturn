@@ -92,7 +92,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(a => a.WorkspaceId);
             e.HasIndex(a => a.UserId);
             e.HasIndex(a => a.CreatedAt);
-            e.HasOne(a => a.Workspace).WithMany().HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            // SECURITY: audit records must survive a workspace delete (SetNull, not Cascade).
+            // Deleting a workspace used to erase its whole audit trail — including the
+            // "Workspace.Deleted" record itself — and inserting that record after the
+            // delete violated the foreign key. The workspace link is nulled on delete;
+            // the record (with the workspace name in Details) stays for forensics.
+            e.HasOne(a => a.Workspace).WithMany().HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<RefreshToken>(e =>
