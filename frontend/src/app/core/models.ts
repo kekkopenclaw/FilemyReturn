@@ -77,6 +77,11 @@ export interface DocumentSummary {
   extractedTotal?: number | null;
   extractedCurrency?: string | null;
   suggestedCategory?: string | null;
+  // Phase 3 classification — null/false until OCR + classification run.
+  classificationConfidence?: number | null;
+  classificationReason?: string | null;
+  needsReview?: boolean;
+  confirmedCategory?: string | null;
 }
 
 export interface DashboardStats {
@@ -88,6 +93,7 @@ export interface DashboardStats {
   documentsProcessing: number;
   documentsFailed: number;
   ocrPending: number;
+  awaitingReview: number;
 }
 
 export interface AuditLogEntry {
