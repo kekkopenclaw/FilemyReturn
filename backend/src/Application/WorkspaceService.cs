@@ -9,10 +9,14 @@ public class WorkspaceService
     private readonly IUserIdentityService _users;
     private readonly IWorkspaceAccessService _access;
     private readonly IAuditService _audit;
+    private readonly IDocumentRepository _documents;
+    private readonly IDocumentStorage _storage;
 
-    public WorkspaceService(IWorkspaceRepository workspaces, IUserIdentityService users, IWorkspaceAccessService access, IAuditService audit)
+    public WorkspaceService(IWorkspaceRepository workspaces, IUserIdentityService users, IWorkspaceAccessService access, IAuditService audit,
+        IDocumentRepository documents, IDocumentStorage storage)
     {
         _workspaces = workspaces; _users = users; _access = access; _audit = audit;
+        _documents = documents; _storage = storage;
     }
 
     private static WorkspaceDto ToDto(Workspace w, string role) => new(w.Id, w.Name, w.Description, w.CreatedAt, w.CreatedById, role);
@@ -85,12 +89,79 @@ public class WorkspaceService
         return new MemberDto(target.Id, target.Email, target.DisplayName, role.ToString(), DateTime.UtcNow);
     }
 
-    /// <summary>Deletes a workspace. WorkspaceOwner only.</summary>
+    /// <summary>
+    /// Removes a member. WorkspaceOwner / WorkspaceAdmin only. The last WorkspaceOwner can
+    /// never be removed (a workspace must always have an owner), and removing a WorkspaceOwner
+    /// requires the caller to be a WorkspaceOwner too — an admin cannot evict an owner.
+    /// Without this endpoint a compromised or rogue member could never be evicted.
+    /// </summary>
+    public async Task RemoveMemberAsync(string userId, Guid workspaceId, string targetUserId, CancellationToken ct = default)
+    {
+        await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.WorkspaceAdmin, ct);
+        var membership = await _workspaces.GetMembershipAsync(workspaceId, targetUserId, ct)
+            ?? throw new NotFoundException("User is not a member of this workspace.");
+        if (membership.Role == WorkspaceRole.WorkspaceOwner)
+        {
+            var caller = await _workspaces.GetMembershipAsync(workspaceId, userId, ct);
+            if (caller?.Role != WorkspaceRole.WorkspaceOwner)
+                throw new ForbiddenException("Only a workspace owner can remove another owner.");
+            if (await _workspaces.CountOwnersAsync(workspaceId, ct) <= 1)
+                throw new ValidationException("The last workspace owner cannot be removed.");
+        }
+        await _workspaces.RemoveMembershipAsync(workspaceId, targetUserId, ct);
+        var target = await _users.FindByIdAsync(targetUserId, ct);
+        await _audit.LogAsync(userId, workspaceId, "Workspace.MemberRemoved", "WorkspaceMembership", targetUserId,
+            $"{target?.Email ?? targetUserId} removed from workspace", ct);
+    }
+
+    /// <summary>
+    /// Changes a member's role. WorkspaceOwner / WorkspaceAdmin only. The WorkspaceOwner role
+    /// can never be granted or taken away here (ownership transfer is a separate, deliberate
+    /// action); the last owner's role can never be lowered. Removing an owner's role requires
+    /// the caller to be an owner.
+    /// </summary>
+    public async Task<MemberDto> ChangeMemberRoleAsync(string userId, Guid workspaceId, string targetUserId, string role, CancellationToken ct = default)
+    {
+        await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.WorkspaceAdmin, ct);
+        if (!Enum.TryParse<WorkspaceRole>(role, ignoreCase: true, out var newRole)
+            || newRole is WorkspaceRole.SystemAdmin or WorkspaceRole.WorkspaceOwner)
+            throw new ValidationException("Role must be WorkspaceAdmin, ArchiveManager, StandardUser or ReadOnly.");
+        var membership = await _workspaces.GetMembershipAsync(workspaceId, targetUserId, ct)
+            ?? throw new NotFoundException("User is not a member of this workspace.");
+        if (membership.Role == WorkspaceRole.WorkspaceOwner)
+        {
+            var caller = await _workspaces.GetMembershipAsync(workspaceId, userId, ct);
+            if (caller?.Role != WorkspaceRole.WorkspaceOwner)
+                throw new ForbiddenException("Only a workspace owner can change another owner's role.");
+            if (await _workspaces.CountOwnersAsync(workspaceId, ct) <= 1)
+                throw new ValidationException("The last workspace owner's role cannot be changed.");
+        }
+        var previous = membership.Role;
+        membership.Role = newRole;
+        await _workspaces.UpdateMembershipAsync(membership, ct);
+        var target = await _users.FindByIdAsync(targetUserId, ct);
+        await _audit.LogAsync(userId, workspaceId, "Workspace.MemberRoleChanged", "WorkspaceMembership", targetUserId,
+            $"{target?.Email ?? targetUserId}: role {previous} → {newRole}", ct);
+        return new MemberDto(targetUserId, target?.Email ?? string.Empty, target?.DisplayName, newRole.ToString(), membership.JoinedAt);
+    }
+
+    /// <summary>
+    /// Deletes a workspace. WorkspaceOwner only. The deletion is audited FIRST (the audit row
+    /// survives the delete — its workspace link is set to null — so the deletion itself stays
+    /// in the trail), every stored file of the workspace's documents is deleted from storage
+    /// (deleted data must not linger on disk), and only then is the workspace row removed.
+    /// </summary>
     public async Task DeleteAsync(string userId, Guid workspaceId, CancellationToken ct = default)
     {
         await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.WorkspaceOwner, ct);
         var workspace = await _workspaces.GetByIdAsync(workspaceId, ct) ?? throw new NotFoundException("Workspace not found.");
-        await _workspaces.DeleteAsync(workspace, ct);
         await _audit.LogAsync(userId, workspaceId, "Workspace.Deleted", "Workspace", workspaceId.ToString(), workspace.Name, ct);
+        var docs = await _documents.ListByWorkspaceAsync(workspaceId, null, ct);
+        foreach (var doc in docs)
+        {
+            try { await _storage.DeleteAsync(doc.StorageKey, ct); }
+            catch { /* a single unreadable file must not block the delete; the row is still removed */ }
+        }
+        await _workspaces.DeleteAsync(workspace, ct);
     }
 }
