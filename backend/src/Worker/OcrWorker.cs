@@ -87,8 +87,7 @@ public class OcrWorker : BackgroundService
                 // Fast path: drain whatever the in-process queue holds right now.
                 while (_queue is ChannelOcrJobQueue channel && channel.TryDequeue(out var job) && job is not null)
                 {
-                    didWork = true;
-                    await ProcessOneAsync(job.WorkspaceId, job.DocumentId, stoppingToken);
+                    didWork |= await ProcessOneAsync(job.WorkspaceId, job.DocumentId, stoppingToken);
                 }
                 // Durable path: poll the database for Queued documents (cross-process + recovery).
                 using (var scope = _scopes.CreateScope())
@@ -96,8 +95,7 @@ public class OcrWorker : BackgroundService
                     var documents = scope.ServiceProvider.GetRequiredService<IDocumentRepository>();
                     foreach (var queued in await documents.ListQueuedForOcrAsync(_options.MaxBatchSize, stoppingToken))
                     {
-                        didWork = true;
-                        await ProcessOneAsync(queued.WorkspaceId, queued.Id, stoppingToken);
+                        didWork |= await ProcessOneAsync(queued.WorkspaceId, queued.Id, stoppingToken);
                     }
                 }
                 if (!didWork)
@@ -116,7 +114,11 @@ public class OcrWorker : BackgroundService
         _logger.LogInformation("OcrWorker stopped.");
     }
 
-    private async Task ProcessOneAsync(Guid workspaceId, Guid documentId, CancellationToken ct)
+    /// <summary>Processes one document. Returns true only when this worker actually claimed
+    /// and processed it — a failed claim (already claimed elsewhere, or a row this worker
+    /// cannot match) is NOT work, so the caller still sleeps the poll interval instead of
+    /// spinning on the same row.</summary>
+    private async Task<bool> ProcessOneAsync(Guid workspaceId, Guid documentId, CancellationToken ct)
     {
         using var scope = _scopes.CreateScope();
         var processing = scope.ServiceProvider.GetRequiredService<OcrProcessingService>();
@@ -124,5 +126,6 @@ public class OcrWorker : BackgroundService
         var claimed = await processing.ProcessAsync(workspaceId, documentId, "system:ocr-worker", ct);
         if (!claimed)
             _logger.LogDebug("OCR job for document {DocumentId} was already claimed; skipping.", documentId);
+        return claimed;
     }
 }
