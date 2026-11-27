@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import {
   DocumentSummary,
@@ -89,9 +89,12 @@ describe('DocumentList tags', () => {
     updateDocumentMetadata: ReturnType<typeof vi.fn>;
   };
 
-  const create = async (docs: DocumentSummary[] = [docWithTag]) => {
+  const create = async (
+    docs: DocumentSummary[] = [docWithTag],
+    getDocuments: () => Observable<DocumentSummary[]> = () => of(docs),
+  ) => {
     api = {
-      getDocuments: vi.fn(() => of(docs)),
+      getDocuments: vi.fn(getDocuments),
       getTags: vi.fn(() => of(tags)),
       createTag: vi.fn((_: string, name: string, colour?: string) =>
         of({
@@ -361,5 +364,26 @@ describe('DocumentList tags', () => {
     // so the select would open blank instead of on the suggested
     // category — the same bug the metadata form fixed with [selected].
     expect(select.value).toBe('Invoice');
+  });
+
+  it('a failed load shows a Try again button that reloads the list', async () => {
+    let calls = 0;
+    const { fixture, el } = await create([docWithTag], () => {
+      calls++;
+      return calls === 1
+        ? throwError(() => new HttpErrorResponse({ status: 500 }))
+        : of([docWithTag]);
+    });
+    // First load failed: the error shows with a retry button, no rows.
+    expect(el.textContent).toContain('Could not load documents');
+    expect(el.textContent).not.toContain('receipt.png');
+    const retry = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Try again',
+    ) as HTMLButtonElement;
+    expect(retry).not.toBeUndefined();
+    retry.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('receipt.png');
+    expect(el.textContent).not.toContain('Could not load documents');
   });
 });

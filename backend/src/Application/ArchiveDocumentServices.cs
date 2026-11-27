@@ -181,12 +181,17 @@ public class DocumentService
         return ToDto(doc);
     }
 
-    /// <summary>Opens a document for secure download (members only). Downloads are audited — a document leaving the system must leave a trail.</summary>
+    /// <summary>Opens a document for secure download (members only). Downloads are audited — a document leaving the system must leave a trail. A missing stored file is audited too (<c>Document.DownloadFailed</c>): the row exists but the bytes are gone (e.g. the disk was wiped on a redeploy), and that is exactly the case an audit trail must show.</summary>
     public async Task<(DocumentDto Document, Stream Content)> GetDownloadAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
         var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
-        var stream = await _storage.OpenReadAsync(doc.StorageKey, ct) ?? throw new NotFoundException("Stored file not found.");
+        var stream = await _storage.OpenReadAsync(doc.StorageKey, ct);
+        if (stream is null)
+        {
+            await _audit.LogAsync(userId, workspaceId, "Document.DownloadFailed", "Document", doc.Id.ToString(), $"{doc.OriginalFileName}: stored file not found.", ct);
+            throw new NotFoundException("Stored file not found.");
+        }
         await _audit.LogAsync(userId, workspaceId, "Document.Downloaded", "Document", doc.Id.ToString(), doc.OriginalFileName, ct);
         return (ToDto(doc), stream);
     }
@@ -198,14 +203,20 @@ public class DocumentService
     /// <summary>Opens a document for in-browser preview (Phase 6 viewer, members only).
     /// Same workspace isolation and storage checks as download; 400 for types browsers
     /// cannot render inline. Views are audited as <c>Document.Viewed</c> — viewing exposes
-    /// the content just as a download does.</summary>
+    /// the content just as a download does — and a missing stored file is audited as
+    /// <c>Document.ViewFailed</c>, same as a failed download.</summary>
     public async Task<(DocumentDto Document, Stream Content)> GetPreviewAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
         var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
         if (!ViewableMimeTypes.Contains(doc.MimeType, StringComparer.OrdinalIgnoreCase))
             throw new ValidationException($"This file type ({doc.MimeType}) cannot be previewed in the browser. Use download instead.");
-        var stream = await _storage.OpenReadAsync(doc.StorageKey, ct) ?? throw new NotFoundException("Stored file not found.");
+        var stream = await _storage.OpenReadAsync(doc.StorageKey, ct);
+        if (stream is null)
+        {
+            await _audit.LogAsync(userId, workspaceId, "Document.ViewFailed", "Document", doc.Id.ToString(), $"{doc.OriginalFileName}: stored file not found.", ct);
+            throw new NotFoundException("Stored file not found.");
+        }
         await _audit.LogAsync(userId, workspaceId, "Document.Viewed", "Document", doc.Id.ToString(), doc.OriginalFileName, ct);
         return (ToDto(doc), stream);
     }

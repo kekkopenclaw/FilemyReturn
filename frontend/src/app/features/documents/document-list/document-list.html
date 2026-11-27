@@ -138,6 +138,9 @@
     <app-loading-spinner />
   } @else if (error()) {
     <p class="error-banner" role="alert">{{ error() }}</p>
+    <button type="button" class="btn" (click)="retryLoad()">
+      Try again
+    </button>
   } @else if (documents().length === 0) {
     <app-empty-state
       message="No documents yet"

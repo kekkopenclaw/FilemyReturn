@@ -555,6 +555,12 @@ export class DocumentList {
     this.viewingDoc.set(null);
   }
 
+  /** Reload the list after a load error — the "Try again" button. */
+  protected retryLoad(): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (workspaceId) this.load(workspaceId);
+  }
+
   private load(workspaceId: string, silent = false): void {
     if (!silent) {
       this.loading.set(true);
