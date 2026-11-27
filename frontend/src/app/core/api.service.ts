@@ -10,6 +10,8 @@ import {
   FilingRule,
   FilingRuleInput,
   MetadataInput,
+  SearchParams,
+  SearchResult,
   Tag,
   Workspace,
 } from './models';
@@ -73,6 +75,31 @@ export class ApiService {
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.http.get<DocumentSummary[]>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents${query}`,
+    );
+  }
+
+  /**
+   * Phase 5 search: free text (`q`) over file name, vendor and OCR text
+   * (PostgreSQL full-text search when the server runs Postgres, LIKE
+   * matching on SQLite) plus filters. At least one criterion is required —
+   * the API returns 400 otherwise.
+   */
+  searchDocuments(
+    workspaceId: string,
+    params: SearchParams,
+  ): Observable<SearchResult[]> {
+    const query = new URLSearchParams();
+    if (params.q?.trim()) query.set('q', params.q.trim());
+    if (params.category) query.set('category', params.category);
+    if (params.vendor?.trim()) query.set('vendor', params.vendor.trim());
+    if (params.from) query.set('from', params.from);
+    if (params.to) query.set('to', params.to);
+    if (params.tagId) query.set('tagId', params.tagId);
+    if (params.archiveId) query.set('archiveId', params.archiveId);
+    if (params.needsReview) query.set('needsReview', 'true');
+    if (params.status) query.set('status', params.status);
+    return this.http.get<SearchResult[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/search?${query.toString()}`,
     );
   }
 

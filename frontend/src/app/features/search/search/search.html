@@ -1,0 +1,175 @@
+<h1>Search documents</h1>
+<p class="page-intro">
+  Search the text of your documents — file names, vendors and the OCR text
+  — and narrow it down with filters. A result shows the passage the words
+  were found in.
+</p>
+
+<form class="search-card" (submit)="onSubmit($event)">
+  <div class="field">
+    <label for="search-q">Search text</label>
+    <input
+      id="search-q"
+      type="search"
+      [value]="q()"
+      (input)="q.set($any($event.target).value)"
+      placeholder="e.g. flat white, Tesco, invoice 123"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="search-category">Category</label>
+      <select
+        id="search-category"
+        [value]="category()"
+        (change)="category.set($any($event.target).value)"
+      >
+        <option value="">Any category</option>
+        @for (c of categories; track c) {
+          <option [value]="c">{{ categoryLabel(c) }}</option>
+        }
+      </select>
+    </div>
+    <div class="field">
+      <label for="search-vendor">Vendor</label>
+      <input
+        id="search-vendor"
+        type="text"
+        [value]="vendor()"
+        (input)="vendor.set($any($event.target).value)"
+        placeholder="e.g. Tesco"
+        autocomplete="off"
+      />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="search-from">Document date from</label>
+      <input
+        id="search-from"
+        type="date"
+        [value]="from()"
+        (change)="from.set($any($event.target).value)"
+      />
+    </div>
+    <div class="field">
+      <label for="search-to">Document date to</label>
+      <input
+        id="search-to"
+        type="date"
+        [value]="to()"
+        (change)="to.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="search-tag">Tag</label>
+      <select
+        id="search-tag"
+        [value]="tagId()"
+        (change)="tagId.set($any($event.target).value)"
+      >
+        <option value="">Any tag</option>
+        @for (t of tags(); track t.id) {
+          <option [value]="t.id">{{ t.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="field">
+      <label for="search-archive">Archive</label>
+      <select
+        id="search-archive"
+        [value]="archiveId()"
+        (change)="archiveId.set($any($event.target).value)"
+      >
+        <option value="">Any archive</option>
+        @for (a of archives(); track a.id) {
+          <option [value]="a.id">{{ a.name }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="search-status">Status</label>
+      <select
+        id="search-status"
+        [value]="status()"
+        (change)="status.set($any($event.target).value)"
+      >
+        <option value="">Any status</option>
+        @for (s of statuses; track s) {
+          <option [value]="s">{{ s }}</option>
+        }
+      </select>
+    </div>
+    <div class="field field-check">
+      <label for="search-review">
+        <input
+          id="search-review"
+          type="checkbox"
+          [checked]="needsReview()"
+          (change)="needsReview.set($any($event.target).checked)"
+        />
+        Needs review only
+      </label>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p class="error-banner" role="alert">{{ error() }}</p>
+  }
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="loading()">
+      Search
+    </button>
+    <button type="button" class="btn" (click)="clear()">Clear</button>
+  </div>
+</form>
+
+@if (loading()) {
+  <app-loading-spinner />
+} @else if (searched() && results().length === 0) {
+  <app-empty-state
+    message="No documents match"
+    detail="Try different words, or fewer filters."
+  />
+} @else if (results().length > 0) {
+  <p class="result-count" role="status">
+    {{ results().length }}
+    {{ results().length === 1 ? 'document' : 'documents' }} found
+  </p>
+  <ul class="result-list">
+    @for (result of results(); track result.document.id) {
+      <li class="result-card">
+        <div class="result-head">
+          <a class="result-name" [routerLink]="['/documents']">
+            {{ result.document.originalFileName }}
+          </a>
+          <span class="result-meta">
+            {{ categoryLabel(effectiveCategory(result)) }} ·
+            {{ result.document.status }} ·
+            {{ result.document.createdAt | date: 'd MMM yyyy' }}
+          </span>
+        </div>
+        <p class="result-snippet">
+          @for (segment of highlightSegments(result.snippet); track $index) {
+            @if (segment.match) {
+              <mark>{{ segment.text }}</mark>
+            } @else {
+              {{ segment.text }}
+            }
+          }
+        </p>
+        <p class="result-field">Matched in {{ matchedFieldLabel(result.matchedField) }}</p>
+      </li>
+    }
+  </ul>
+}

@@ -167,3 +167,23 @@ export interface AuditLogEntry {
   details: string | null;
   createdAt: string;
 }
+
+// Phase 5 search: one hit is the document plus a short excerpt showing the
+// match. `matchedField` is "ocr", "vendor" or "fileName".
+export interface SearchResult {
+  document: DocumentSummary;
+  snippet: string;
+  matchedField: string;
+}
+
+export interface SearchParams {
+  q?: string;
+  category?: string;
+  vendor?: string;
+  from?: string;
+  to?: string;
+  tagId?: string;
+  archiveId?: string;
+  needsReview?: boolean;
+  status?: string;
+}

@@ -12,7 +12,7 @@
 2. Document uploads — storage, validation, listing, secure download
 3. OCR — PaddleOCR, background processing, results, retries
 4. Organisation — categories, metadata, folders, tags, rules (tags + filing rules done 2026-11-27: workspace tags with assign/filter; filing rules auto-file documents after OCR — vendor/category/file-name match → assign tag, set category, move to archive — plus a manual apply endpoint)
-5. Search — PostgreSQL full-text search, filters, snippets
+5. Search — PostgreSQL full-text search, filters, snippets (done 2026-11-27: `GET …/documents/search`, FTS on Postgres via to_tsvector/plainto_tsquery, LIKE on SQLite, snippets with matched field, /search page)
 6. Document viewer — PDF/image, metadata editing, OCR review
 7. Archive management — physical location, QR codes, boxes
 8. Security hardening — audit, tests, isolation, backup
