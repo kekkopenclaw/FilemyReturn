@@ -1,24 +1,35 @@
+/* Landing page — DocuArchive preview style: light warm off-white + teal green. */
+
 :host {
   display: block;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--bg);
+  color: var(--ink);
 }
 
+/* -- Sticky blurred topbar ---------------------------------------------- */
+
 .landing-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 1.5rem;
   padding: 0.9rem 1.5rem;
-  background: var(--color-navy);
-  color: #fff;
+  background: rgba(252, 252, 249, 0.85);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: #fff;
-  font-weight: 700;
+  color: var(--ink);
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
   font-size: 1.15rem;
   text-decoration: none;
 }
@@ -30,8 +41,8 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--green);
+  color: #fff;
   font-weight: 800;
 }
 
@@ -42,7 +53,7 @@
 }
 
 .topbar-nav a {
-  color: #dbe7f3;
+  color: var(--ink2);
   text-decoration: none;
   font-weight: 600;
 }
@@ -52,14 +63,16 @@
   gap: 0.6rem;
 }
 
+/* -- Hero ---------------------------------------------------------------- */
+
 .hero {
-  background: linear-gradient(160deg, var(--color-navy) 0%, #0a1a2e 70%);
-  color: #fff;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .hero-inner {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: 1.05fr 0.95fr;
   gap: 2.5rem;
   align-items: center;
   max-width: 68rem;
@@ -69,7 +82,7 @@
 
 .eyebrow {
   margin: 0 0 0.75rem;
-  color: var(--color-accent);
+  color: var(--green);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -80,16 +93,17 @@
   margin: 0 0 1rem;
   font-size: 2.6rem;
   line-height: 1.15;
+  color: var(--ink);
 }
 
 .hero-accent {
-  color: var(--color-accent);
+  color: var(--green);
 }
 
 .hero-sub {
   margin: 0 0 1.5rem;
   font-size: 1.15rem;
-  color: #dbe7f3;
+  color: var(--ink2);
   max-width: 32rem;
 }
 
@@ -100,27 +114,60 @@
   margin: 0 0 0.75rem;
 }
 
+.hero-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .btn-large {
   padding: 0.75rem 1.5rem;
   font-size: 1.05rem;
 }
 
+/* -- Watch-me-scan demo -------------------------------------------------- */
+
 .scan-demo {
   margin: 0;
   padding: 1.25rem 1.5rem 1.5rem;
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-radius: calc(var(--radius) * 2);
-  box-shadow: 0 1.5rem 3rem rgba(2, 6, 23, 0.45);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
 }
 
 .demo-title {
   margin-bottom: 0.75rem;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.demo-title .pill-label {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.demo-stage {
+  display: grid;
+  grid-template-columns: 1fr 3px 0.9fr;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* Green scanline standing beside the extraction panel. */
+.demo-divider {
+  background: var(--green);
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(14, 124, 102, 0.45);
+}
+
+.demo-extracted {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .receipt {
@@ -128,11 +175,12 @@
   overflow: hidden;
   padding: 1rem 1.25rem;
   background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   font-size: 0.85rem;
   line-height: 1.5;
+  color: var(--ink);
 }
 
 .receipt-shop {
@@ -147,7 +195,7 @@
 .receipt-date {
   margin: 0;
   text-align: center;
-  color: var(--color-muted);
+  color: var(--muted);
 }
 
 .receipt-date {
@@ -157,8 +205,8 @@
 .receipt-items {
   margin: 0.5rem 0;
   padding: 0.5rem 0;
-  border-top: 1px dashed var(--color-border);
-  border-bottom: 1px dashed var(--color-border);
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
   list-style: none;
 }
 
@@ -181,8 +229,8 @@
   right: 0;
   top: 0;
   height: 3px;
-  background: var(--color-accent);
-  box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.7);
+  background: var(--green);
+  box-shadow: 0 0 12px 2px rgba(14, 124, 102, 0.7);
   opacity: 0;
 }
 
@@ -201,19 +249,20 @@
 }
 
 .demo-status {
-  margin: 0.75rem 0;
+  margin: 0 0 0.5rem;
   min-height: 1.5rem;
   font-size: 0.9rem;
-  color: var(--color-muted);
+  color: var(--muted);
 }
 
 .is-done .demo-status {
-  color: var(--color-accent-dark);
+  color: var(--green-dark);
   font-weight: 600;
 }
 
 .extracted {
-  margin: 0 0 1rem;
+  margin: 0;
+  flex: 1;
 }
 
 .extracted > div {
@@ -221,7 +270,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.45rem 0;
-  border-bottom: 1px dashed var(--color-border);
+  border-bottom: 1px dashed var(--line);
   opacity: 0;
   transform: translateY(4px);
   transition:
@@ -236,24 +285,29 @@
 
 .extracted dt {
   font-weight: 600;
-  color: var(--color-muted);
+  color: var(--muted);
 }
 
 .extracted dd {
   margin: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   font-weight: 600;
   text-align: right;
 }
 
 .tick {
-  color: var(--color-accent-dark);
+  color: var(--green-dark);
   font-weight: 800;
+}
+
+.scan-demo > .btn {
+  margin-top: 1rem;
 }
 
 .demo-note {
   margin: 0.6rem 0 0;
   font-size: 0.85rem;
-  color: var(--color-muted);
+  color: var(--muted);
   text-align: center;
 }
 
@@ -267,6 +321,8 @@
   }
 }
 
+/* -- Sections ------------------------------------------------------------ */
+
 .section {
   max-width: 68rem;
   margin: 0 auto;
@@ -274,26 +330,27 @@
 }
 
 .section-muted {
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--bg2);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .section h2 {
   font-size: 1.7rem;
   margin: 0 0 0.5rem;
+  color: var(--ink);
 }
 
 .section-sub {
   margin: 0 0 2rem;
-  color: var(--color-muted);
+  color: var(--muted);
   font-size: 1.05rem;
 }
 
 .steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -302,9 +359,10 @@
 .steps li,
 .security-list li {
   padding: 1.5rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: calc(var(--radius) * 2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
 }
 
 .step-number {
@@ -315,8 +373,9 @@
   height: 2.25rem;
   margin-bottom: 0.75rem;
   border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent-dark);
+  background: var(--green-light);
+  color: var(--green-dark);
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
   font-weight: 800;
   font-size: 1.15rem;
 }
@@ -330,7 +389,40 @@
 .steps p,
 .security-list p {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--muted);
+}
+
+/* -- Dashboard preview: white shell, black active filter chip ------------ */
+
+.dashboard-shell {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.filter-chip {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.filter-chip.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
 }
 
 .dashboard-preview {
@@ -344,19 +436,26 @@
   display: flex;
   flex-direction: column;
   padding: 1.25rem;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
 }
 
 .preview-value {
+  font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--color-navy);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .preview-label {
-  color: var(--color-muted);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.preview-caption {
+  margin: 0 0 1rem;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
@@ -369,6 +468,13 @@
   list-style: none;
 }
 
+/* -- Dark-ink CTA band ---------------------------------------------------- */
+
+.cta-band {
+  background: var(--ink);
+  color: #eef4f0;
+}
+
 .cta {
   max-width: 68rem;
   margin: 0 auto;
@@ -378,10 +484,15 @@
 
 .cta h2 {
   font-size: 1.9rem;
+  color: #fff;
+}
+
+.cta h2 .hero-accent {
+  color: #2ec4a0;
 }
 
 .cta p {
-  color: var(--color-muted);
+  color: #b9c6bf;
 }
 
 .cta p:last-child {
@@ -393,20 +504,30 @@
 }
 
 .cta .btn-ghost {
-  border-color: var(--color-navy);
-  color: var(--color-navy);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.cta .btn-ghost:hover {
+  border-color: #fff;
 }
 
 .landing-footer {
   padding: 1.5rem;
-  background: var(--color-navy);
-  color: #9fb4c9;
+  background: var(--ink);
+  color: #8ba097;
   text-align: center;
   font-size: 0.9rem;
 }
 
 .landing-footer p {
   margin: 0;
+}
+
+@media (max-width: 64rem) {
+  .steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 48rem) {
@@ -421,6 +542,14 @@
 
   .topbar-nav {
     display: none;
+  }
+
+  .demo-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-divider {
+    height: 3px;
   }
 
   .steps,
