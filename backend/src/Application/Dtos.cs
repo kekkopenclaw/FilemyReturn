@@ -54,11 +54,18 @@ public record DocumentDto(
     string? OcrText = null, double? OcrConfidence = null,
     string? ExtractedVendor = null, DateTime? ExtractedDate = null,
     decimal? ExtractedTotal = null, string? ExtractedCurrency = null,
-    string? SuggestedCategory = null);
+    string? SuggestedCategory = null,
+    // Phase 3 classification — null/false until OCR + classification run.
+    double? ClassificationConfidence = null, string? ClassificationReason = null,
+    bool NeedsReview = false, string? ConfirmedCategory = null);
 
 public record DashboardDto(
     Guid WorkspaceId, int ArchiveCount, int DocumentCount, int MemberCount,
-    int DocumentsReady, int DocumentsProcessing, int DocumentsFailed, int OcrPending);
+    int DocumentsReady, int DocumentsProcessing, int DocumentsFailed, int OcrPending,
+    int AwaitingReview = 0);
+
+/// <summary>Confirm or correct a document's category (human review queue).</summary>
+public record ConfirmCategoryRequest([Required] string Category);
 
 /// <summary>One entry of a workspace's upload history (Phase 2).</summary>
 public record UploadHistoryDto(
