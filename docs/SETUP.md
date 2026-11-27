@@ -22,7 +22,7 @@ cp .env.example .env
 # Edit .env and set REAL values (every value in .env.example is a placeholder):
 #   JWT_KEY         — random string, at least 32 characters (required)
 #   ADMIN_PASSWORD  — at least 12 characters (seed admin login, see below)
-#   POSTGRES_PASSWORD — random (required by compose, even on SQLite default)
+#   POSTGRES_PASSWORD — random (only needed with the postgres profile, below)
 docker compose up --build
 ```
 
@@ -31,10 +31,19 @@ from `wwwroot`, so one URL is the whole app. Swagger UI is at
 `/swagger` (Development only). Health: `GET /health`.
 
 Compose details (`docker-compose.yml`): the `api` service builds the repo
-`Dockerfile` and maps `5000:8080`; the `db` service is `postgres:16-alpine`
-(user `docuarchive`, database `docuarchive`, port `5432`) and is only used
-when you switch providers — SQLite is the default and the `api` still waits
-for `db` to be healthy. Data lives in the `docuarchive-data` volume
+`Dockerfile` and maps `5000:8080`; by default it is the only service that
+starts, on SQLite. The `db` service is `postgres:16-alpine`
+(user `docuarchive`, database `docuarchive`, port `5432`) and sits behind
+the `postgres` profile — it never starts unless you ask for it, so the
+default run needs no Postgres password. To test the production provider:
+
+```bash
+docker compose --profile postgres up --build
+# with DATABASE_PROVIDER=Postgres and CONNECTION_STRING set in .env, e.g.
+# CONNECTION_STRING=Host=db;Database=docuarchive;Username=docuarchive;Password=<same as POSTGRES_PASSWORD>
+```
+
+Data lives in the `docuarchive-data` volume
 (`/app/data`: SQLite file + uploaded files).
 
 ## Local dev without Docker
@@ -114,8 +123,9 @@ the Angular build from `wwwroot`; the database is SQLite on ephemeral disk.
 
 ## Troubleshooting
 
-- `docker compose` refuses to start: `JWT_KEY` / `POSTGRES_PASSWORD` are
-  unset in `.env` — copy `.env.example` to `.env` and fill them in.
+- `docker compose` refuses to start: `JWT_KEY` is unset in `.env` — copy
+  `.env.example` to `.env` and fill it in. (`POSTGRES_PASSWORD` is only
+  required with the `postgres` profile, not on the default SQLite run.)
 - API won't start in Production: the JWT key is the dev placeholder or
   shorter than 32 characters — set a real random `Jwt__Key`.
 - Uploads stay `Queued` / `Failed`: OCR needs `tesseract-ocr` +

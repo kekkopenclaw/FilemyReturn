@@ -1,8 +1,12 @@
 # DocuArchive — local development (docker compose)
 # One command:  docker compose up --build
 # API (serves Angular from wwwroot) on http://localhost:5000, Swagger at /swagger (dev only).
-# SQLite by default (no paid DB). Postgres is included for testing the production
-# provider: set Database__Provider=Postgres and ConnectionStrings__Default accordingly.
+# SQLite by default (no paid DB): only the `api` service starts — no db
+# container, no Postgres password needed.
+# Postgres is behind the `postgres` profile and never starts unless asked for:
+#   docker compose --profile postgres up --build
+# with DATABASE_PROVIDER=Postgres and CONNECTION_STRING in .env, e.g.
+#   CONNECTION_STRING=Host=db;Database=docuarchive;Username=docuarchive;Password=<same as POSTGRES_PASSWORD>
 # Copy .env.example to .env and set Jwt__Key (32+ chars) + ADMIN_PASSWORD (12+ chars).
 services:
   api:
@@ -24,6 +28,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        # `db` only exists when the `postgres` profile is on. Without
+        # `required: false`, a plain `docker compose up` (or `config`) would
+        # fail with "service api depends on undefined service db".
+        required: false
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 30s
@@ -32,9 +40,13 @@ services:
 
   db:
     image: postgres:16-alpine
+    # Only started with `docker compose --profile postgres up`. The default
+    # SQLite run never creates this container.
+    profiles:
+      - postgres
     environment:
       POSTGRES_USER: docuarchive
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — copy .env.example to .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env when using the postgres profile — copy .env.example to .env}
       POSTGRES_DB: docuarchive
     ports:
       - "5432:5432"
