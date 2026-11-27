@@ -1,22 +1,108 @@
-/* Global styles — dark navy + emerald accent, system fonts, CSS only. */
+/* Global styles — DocuArchive preview tokens: light warm off-white + teal green.
+   Light theme is the explicit default. Fonts are self-hosted (see src/assets/fonts). */
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('assets/fonts/manrope-800.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('assets/fonts/ibm-plex-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('assets/fonts/ibm-plex-mono-600.woff2') format('woff2');
+}
 
 :root {
-  --color-navy: #0f2440;
-  --color-navy-light: #1b3a5e;
-  --color-accent: #10b981;
-  --color-accent-dark: #047857;
-  --color-accent-soft: #d1fae5;
-  --color-on-accent: #052e22;
-  --color-bg: #f3f5f7;
+  /* Preview tokens (light default) */
+  --bg: #fcfcf9;
+  --bg2: #f2f3ef;
+  --surface: #ffffff;
+  --surface2: #f7f8f5;
+  --ink: #101a17;
+  --ink2: #3d4a45;
+  --muted: #6b7a74;
+  --line: #e3e7e1;
+  --green: #0e7c66;
+  --green-dark: #0a5e4e;
+  --green-light: #e6f4ef;
+  --amber: #b7790a;
+  --amber-bg: #fef3c7;
+  --red: #b42318;
+  --radius: 18px;
+  --shadow-soft: 0 12px 32px rgba(16, 26, 23, 0.08);
+
+  /* Aliases kept for components that use the --color-* names */
+  --color-navy: #101a17;
+  --color-navy-light: #3d4a45;
+  --color-accent: #0e7c66;
+  --color-accent-dark: #0a5e4e;
+  --color-accent-soft: #e6f4ef;
+  --color-on-accent: #ffffff;
+  --color-bg: #fcfcf9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f8fafc;
-  --color-text: #0f172a;
-  --color-muted: #64748b;
-  --color-border: #e2e8f0;
-  --color-danger: #b91c1c;
-  --color-danger-bg: #fef2f2;
-  --color-success-bg: #f0fdf4;
-  --radius: 0.5rem;
+  --color-surface-muted: #f7f8f5;
+  --color-text: #101a17;
+  --color-muted: #6b7a74;
+  --color-border: #e3e7e1;
+  --color-danger: #b42318;
+  --color-danger-bg: #fdecea;
+  --color-success-bg: #e6f4ef;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1311;
+    --bg2: #101715;
+    --surface: #161f1b;
+    --surface2: #1b2622;
+    --ink: #eef4f0;
+    --ink2: #b9c6bf;
+    --muted: #8ba097;
+    --line: #27332e;
+    --green: #2ec4a0;
+    --green-dark: #2ec4a0;
+    --green-light: #16352d;
+    --amber: #d9a441;
+    --amber-bg: #3a2f10;
+    --red: #f04438;
+    --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.4);
+
+    --color-navy: #eef4f0;
+    --color-navy-light: #b9c6bf;
+    --color-accent: #2ec4a0;
+    --color-accent-dark: #2ec4a0;
+    --color-accent-soft: #16352d;
+    --color-bg: #0d1311;
+    --color-surface: #161f1b;
+    --color-surface-muted: #1b2622;
+    --color-text: #eef4f0;
+    --color-muted: #8ba097;
+    --color-border: #27332e;
+    --color-danger: #f04438;
+    --color-danger-bg: #3a1d1a;
+    --color-success-bg: #16352d;
+  }
 }
 
 *,
@@ -27,18 +113,19 @@
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Manrope', 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 h1 {
@@ -84,7 +171,7 @@ textarea:focus-visible {
   padding: 0.5rem 1rem;
   background: var(--color-accent);
   color: var(--color-on-accent);
-  border-radius: var(--radius);
+  border-radius: 999px;
   font-weight: 700;
   transition: top 0.15s ease;
 }
@@ -111,7 +198,7 @@ textarea:focus-visible {
   width: 100%;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 12px;
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -138,8 +225,8 @@ textarea:focus-visible {
   padding: 0.75rem 1rem;
   margin: 0 0 1rem;
   background: var(--color-danger-bg);
-  border: 1px solid #fecaca;
-  border-radius: var(--radius);
+  border: 1px solid #f5c6c0;
+  border-radius: 12px;
   color: var(--color-danger);
 }
 
@@ -147,8 +234,8 @@ textarea:focus-visible {
   padding: 0.75rem 1rem;
   margin: 0 0 1rem;
   background: var(--color-success-bg);
-  border: 1px solid #bbf7d0;
-  border-radius: var(--radius);
+  border: 1px solid #bfe3d3;
+  border-radius: 12px;
   color: var(--color-accent-dark);
 }
 
@@ -157,7 +244,7 @@ textarea:focus-visible {
   margin: 0 0 1rem;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: var(--radius);
+  border-radius: 12px;
   color: #1d4ed8;
 }
 
@@ -167,7 +254,7 @@ textarea:focus-visible {
   display: inline-block;
   padding: 0.6rem 1.25rem;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: 999px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -182,28 +269,51 @@ textarea:focus-visible {
   cursor: not-allowed;
 }
 
+/* Preview: black pill is the primary button. */
 .btn-primary {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--ink);
+  color: var(--surface);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0da271;
+  background: var(--ink2);
+}
+
+/* Preview: green pill button. */
+.btn-accent {
+  background: var(--green);
+  color: #fff;
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: var(--green-dark);
 }
 
 .btn-ghost {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #fff;
+  border-color: var(--color-border);
+  color: var(--color-text);
   padding: 0.45rem 0.9rem;
 }
 
 .btn-ghost:hover {
-  border-color: #fff;
+  border-color: var(--color-text);
 }
 
 .btn-block {
   width: 100%;
+}
+
+/* Green pill label, e.g. "Interactive preview — sample data". */
+.pill-label {
+  display: inline-block;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: var(--green-light);
+  color: var(--green-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 /* -- Badges ------------------------------------------------------------- */
@@ -221,20 +331,20 @@ textarea:focus-visible {
 
 .badge-success {
   background: var(--color-success-bg);
-  border-color: #bbf7d0;
+  border-color: #bfe3d3;
   color: var(--color-accent-dark);
 }
 
 .badge-danger {
   background: var(--color-danger-bg);
-  border-color: #fecaca;
+  border-color: #f5c6c0;
   color: var(--color-danger);
 }
 
 .badge-warning {
-  background: #fffbeb;
+  background: var(--amber-bg);
   border-color: #fde68a;
-  color: #92400e;
+  color: var(--amber);
 }
 
 .badge-info {
