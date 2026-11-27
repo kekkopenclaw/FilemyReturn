@@ -6,6 +6,7 @@
     <span class="brand-name">DocuArchive</span>
   </a>
   <nav class="topbar-nav" aria-label="Landing page sections">
+    <a href="#demo">Live demo</a>
     <a href="#how">How it works</a>
     <a href="#dashboard">Dashboard</a>
     <a href="#security">Security</a>
@@ -38,18 +39,56 @@
         <p class="hero-note">No card required. Your documents stay on your own server.</p>
       </div>
 
-      <figure class="receipt-card" aria-label="Example of a receipt read by DocuArchive">
-        <figcaption class="receipt-title">Example receipt</figcaption>
-        <dl class="receipt-lines">
-          <div><dt>Shop</dt><dd>Corner Store, High Street</dd></div>
-          <div><dt>Date</dt><dd>27 November 2026</dd></div>
-          <div><dt>Total</dt><dd>&pound;24.50</dd></div>
-          <div><dt>Category</dt><dd>Groceries</dd></div>
-        </dl>
-        <p class="receipt-read">
-          <span class="badge badge-success">Read automatically</span>
-          Date, shop, amount &amp; category — filed and searchable.
-        </p>
+      <!-- Interactive scan demo: a sample Tesco receipt. The scan line
+           sweeps over it, then the extracted fields appear one by one. -->
+      <figure class="scan-demo" id="demo" #demo aria-labelledby="demo-heading">
+        <figcaption id="demo-heading" class="demo-title">Watch me scan</figcaption>
+        <div class="demo-stage" [class.is-scanning]="scanning()" [class.is-done]="done()">
+          <div class="receipt" aria-hidden="true">
+            <p class="receipt-shop">TESCO</p>
+            <p class="receipt-branch">Tesco Superstore · London</p>
+            <p class="receipt-date">24 November 2026</p>
+            <ul class="receipt-items">
+              <li><span>Semi-Skimmed Milk 2L</span><span>&pound;1.20</span></li>
+              <li><span>Wholemeal Bread 800g</span><span>&pound;1.10</span></li>
+              <li><span>Bananas 5pk</span><span>&pound;0.95</span></li>
+              <li><span>Chicken Breast 600g</span><span>&pound;4.50</span></li>
+              <li><span>Coffee Beans 200g</span><span>&pound;5.25</span></li>
+              <li><span>Gala Apples 4pk</span><span>&pound;1.85</span></li>
+            </ul>
+            <p class="receipt-total"><span>Total</span><span>&pound;14.85</span></p>
+            <div class="scan-line" aria-hidden="true"></div>
+          </div>
+          <p class="demo-status" role="status">{{ status() }}</p>
+          <dl class="extracted">
+            <div [class.revealed]="revealed() >= 1">
+              <dt>Shop</dt>
+              <dd>TESCO <span class="tick" aria-hidden="true">&#10003;</span></dd>
+            </div>
+            <div [class.revealed]="revealed() >= 2">
+              <dt>Date</dt>
+              <dd>24 November 2026 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+            </div>
+            <div [class.revealed]="revealed() >= 3">
+              <dt>Total</dt>
+              <dd>&pound;14.85 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+            </div>
+            <div [class.revealed]="revealed() >= 4">
+              <dt>Category</dt>
+              <dd>Groceries <span class="tick" aria-hidden="true">&#10003;</span></dd>
+            </div>
+          </dl>
+        </div>
+        <button class="btn btn-primary btn-block" type="button" (click)="scan()" [disabled]="scanning()">
+          @if (scanning()) {
+            Scanning…
+          } @else if (done()) {
+            Scan it again
+          } @else {
+            Scan this receipt
+          }
+        </button>
+        <p class="demo-note">Demo data — your live dashboard reads your real receipts.</p>
       </figure>
     </div>
   </section>
