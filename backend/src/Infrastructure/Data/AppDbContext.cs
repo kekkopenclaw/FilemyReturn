@@ -70,6 +70,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(d => d.ExtractedTotal).HasColumnType("decimal(18,2)");
             e.Property(d => d.ExtractedCurrency).HasMaxLength(8);
             e.Property(d => d.SuggestedCategory).HasMaxLength(64);
+            // Phase 3 classification (all null/false until OCR + classification run).
+            e.Property(d => d.ClassificationConfidence);
+            e.Property(d => d.ClassificationReason).HasMaxLength(500);
+            e.Property(d => d.NeedsReview);
+            e.Property(d => d.ConfirmedCategory).HasMaxLength(64);
+            e.HasIndex(d => d.NeedsReview); // the dashboard review queue counts flagged documents.
             e.HasIndex(d => d.OcrStatus); // the OCR worker polls for Queued documents.
             e.HasIndex(d => d.WorkspaceId);
             e.HasIndex(d => d.ArchiveId);
