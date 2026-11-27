@@ -103,6 +103,20 @@ namespace DocuArchive.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ExtractedCurrency")
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExtractedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("ExtractedTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ExtractedVendor")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("FileSizeBytes")
                         .HasColumnType("INTEGER");
 
@@ -110,6 +124,9 @@ namespace DocuArchive.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("OcrConfidence")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("OcrStatus")
                         .IsRequired()
@@ -139,6 +156,10 @@ namespace DocuArchive.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("SuggestedCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("TEXT");
 
@@ -147,6 +168,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.HasIndex("ArchiveId");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OcrStatus");
 
                     b.HasIndex("WorkspaceId");
 

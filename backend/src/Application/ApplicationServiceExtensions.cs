@@ -14,6 +14,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<ArchiveService>();
         services.AddScoped<DocumentService>();
         services.AddScoped<DocumentUploadService>();
+        services.AddScoped<OcrProcessingService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<AuditQueryService>();
         return services;

@@ -8,6 +8,15 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth.service';
 
+/** Machine-readable error code from the backend problem response, if any. */
+function errorCode(err: unknown): string | null {
+  if (err instanceof HttpErrorResponse) {
+    const code = (err.error as { code?: unknown } | null)?.code;
+    return typeof code === 'string' ? code : null;
+  }
+  return null;
+}
+
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink],
@@ -42,10 +51,27 @@ export class Login {
       },
       error: (err: unknown) => {
         this.loading.set(false);
+        if (
+          err instanceof HttpErrorResponse &&
+          err.status === 403 &&
+          errorCode(err) === 'MustChangePassword'
+        ) {
+          // Seeded admin / first login: no tokens were issued. Send the
+          // user to the change-password page with their email prefilled.
+          void this.router.navigate(['/change-password'], {
+            queryParams: {
+              email: email ?? '',
+              reason: 'must-change-password',
+            },
+          });
+          return;
+        }
         this.serverError.set(
           err instanceof HttpErrorResponse && err.status === 401
             ? 'Incorrect email or password.'
-            : 'Could not sign in. Please check your connection and try again.',
+            : err instanceof HttpErrorResponse && err.status === 423
+              ? 'Your account is locked after too many failed sign-in attempts. Try again later.'
+              : 'Could not sign in. Please check your connection and try again.',
         );
       },
     });

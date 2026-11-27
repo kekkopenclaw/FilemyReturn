@@ -94,6 +94,27 @@ public class EfDocumentRepository : IDocumentRepository
 
     public Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
         => _db.Documents.CountAsync(d => d.WorkspaceId == workspaceId, ct);
+
+    public async Task UpdateAsync(Document document, CancellationToken ct = default)
+    {
+        _db.Documents.Update(document);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> TryClaimForOcrAsync(Guid workspaceId, Guid documentId, CancellationToken ct = default)
+    {
+        // Atomic claim: only a row still Queued flips to Processing. 0 rows = already claimed.
+        var affected = await _db.Documents
+            .Where(d => d.WorkspaceId == workspaceId && d.Id == documentId && d.OcrStatus == OcrStatus.Queued)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(d => d.Status, DocumentStatus.Processing)
+                .SetProperty(d => d.OcrStatus, OcrStatus.Processing), ct);
+        return affected == 1;
+    }
+
+    public Task<List<Document>> ListQueuedForOcrAsync(int take, CancellationToken ct = default)
+        => _db.Documents.Where(d => d.OcrStatus == OcrStatus.Queued)
+            .OrderBy(d => d.CreatedAt).Take(take).ToListAsync(ct);
 }
 
 public class EfAuditRepository : IAuditRepository

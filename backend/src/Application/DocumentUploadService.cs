@@ -5,10 +5,10 @@ using Microsoft.Extensions.Options;
 namespace DocuArchive.Application;
 
 /// <summary>
-/// Document upload use case (Phase 2). Validates the file by magic bytes (never trusting the
+/// Document upload use case (Phase 2, Phase 3 queues OCR). Validates the file by magic bytes (never trusting the
 /// client-supplied content type), enforces the size limit, rejects exact duplicates per
 /// workspace by SHA-256 (409), stores the bytes via <see cref="IDocumentStorage"/> and
-/// creates the <see cref="Document"/> row (Status Uploaded, OcrStatus NotStarted).
+/// creates the <see cref="Document"/> row (Status Uploaded, OcrStatus Queued — the OCR worker picks it up).
 /// </summary>
 public class DocumentUploadService
 {
@@ -18,6 +18,7 @@ public class DocumentUploadService
     private readonly IDocumentStorage _storage;
     private readonly IAuditService _audit;
     private readonly StorageSettings _settings;
+    private readonly IOcrJobQueue? _ocrQueue;
 
     public DocumentUploadService(
         IDocumentRepository documents,
@@ -25,10 +26,11 @@ public class DocumentUploadService
         IWorkspaceAccessService access,
         IDocumentStorage storage,
         IAuditService audit,
-        IOptions<StorageSettings> settings)
+        IOptions<StorageSettings> settings,
+        IOcrJobQueue? ocrQueue = null)
     {
         _documents = documents; _archives = archives; _access = access;
-        _storage = storage; _audit = audit; _settings = settings.Value;
+        _storage = storage; _audit = audit; _settings = settings.Value; _ocrQueue = ocrQueue;
     }
 
     /// <summary>Validates and stores an upload. Returns the created document.</summary>
@@ -81,16 +83,19 @@ public class DocumentUploadService
             FileSizeBytes = bytes.Length,
             MimeType = mimeType,
             Status = DocumentStatus.Uploaded,
-            OcrStatus = OcrStatus.NotStarted,
+            OcrStatus = OcrStatus.Queued,
             CreatedById = userId
         };
         await _documents.AddAsync(document, ct);
         await _audit.LogAsync(userId, workspaceId, "Document.Uploaded", "Document", document.Id.ToString(),
             $"{document.OriginalFileName} ({document.FileSizeBytes} bytes, {mimeType})", ct);
-        return new DocumentDto(
-            document.Id, document.WorkspaceId, document.ArchiveId, document.OriginalFileName,
-            document.Sha256Hash, document.FileSizeBytes, document.MimeType,
-            document.Status.ToString(), document.OcrStatus.ToString(), document.CreatedAt, document.CreatedById);
+        // Phase 3: the upload queues OCR. The Queued status in the database is the durable
+        // trigger (the polling worker picks it up); the in-memory queue, when registered, is
+        // only a fast wake-up signal. The queue is optional so the API still starts before
+        // the WebApi host registers it (see docs/OCR.md).
+        if (_ocrQueue is not null)
+            await _ocrQueue.EnqueueAsync(new OcrJob(document.Id, workspaceId, document.StorageKey), ct);
+        return DocumentDtos.ToDto(document);
     }
 }
 

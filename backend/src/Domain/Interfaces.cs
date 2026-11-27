@@ -1,9 +1,9 @@
 namespace DocuArchive.Domain;
 
-/// <summary>Result of OCR text extraction. Phase 3 (PaddleOCR) fills this in; Phase 1 never fabricates one.</summary>
+/// <summary>Result of OCR text extraction. <see cref="Success"/> is false when the engine could not run (binary missing, timeout, unreadable file) — never fabricate text in that case.</summary>
 public record OcrResult(string? Text, double? Confidence, string? Language, bool Success);
 
-/// <summary>OCR engine abstraction. Implemented by PaddleOCR in Phase 3.</summary>
+/// <summary>OCR engine abstraction. Phase 3 implementation is <c>TesseractOcrEngine</c> (local, free, CPU-only); PaddleOCR remains an unwired stub (see docs/OCR.md).</summary>
 public interface IOcrEngine
 {
     /// <summary>Extracts text from the document stored under <paramref name="storageKey"/>.</summary>
@@ -33,7 +33,7 @@ public interface IWorkspaceAccessService
 {
     Task<WorkspaceMembership?> GetMembershipAsync(Guid workspaceId, string userId, CancellationToken cancellationToken = default);
     Task<bool> IsMemberAsync(Guid workspaceId, string userId, CancellationToken cancellationToken = default);
-    /// <summary>True when the user is a member with at least <paramref name="minimumRole"/> (or is a system admin).</summary>
+    /// <summary>True when the user is a member with at least <paramref name="minimumRole"/>. No blanket bypass: system admins need a membership like everyone else.</summary>
     Task<bool> HasRoleAsync(Guid workspaceId, string userId, WorkspaceRole minimumRole, CancellationToken cancellationToken = default);
     /// <summary>Returns the membership or throws a not-found error when the user is not a member (404, so workspace existence is not leaked).</summary>
     Task<WorkspaceMembership> RequireMembershipAsync(Guid workspaceId, string userId, CancellationToken cancellationToken = default);

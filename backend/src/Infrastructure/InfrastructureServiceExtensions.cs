@@ -60,7 +60,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IWorkspaceAccessService, WorkspaceAccessService>();
         services.AddScoped<IDocumentStorage, LocalFileSystemStorage>();
-        services.AddScoped<IOcrEngine, PaddleOcrEngine>();
+        // Phase 3 OCR: local Tesseract CLI (free, CPU-only, nothing leaves the machine).
+        // PaddleOCR stays an unwired stub — see docs/OCR.md for the evaluation.
+        services.Configure<OcrSettings>(configuration.GetSection("Ocr"));
+        services.AddScoped<IOcrEngine, TesseractOcrEngine>();
         services.AddScoped<IEmailService, LogEmailService>();
 
         services.AddApplication();

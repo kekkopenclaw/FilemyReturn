@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
@@ -7,10 +6,16 @@ import { WorkspaceService } from '../../core/workspace.service';
 import { EmptyState } from '../../shared/empty-state/empty-state';
 import { LoadingSpinner } from '../../shared/loading-spinner/loading-spinner';
 
-/** Workspace overview: real counts from GET /dashboard, nothing mocked. */
+/**
+ * Workspace overview: real counts from GET /dashboard, nothing mocked.
+ * Cards match the backend DashboardDto exactly (documentCount,
+ * documentsReady, documentsProcessing, documentsFailed, ocrPending,
+ * memberCount, archiveCount). There is no recent-uploads or storage field
+ * on that endpoint, so none is shown here — see /documents instead.
+ */
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, RouterLink, EmptyState, LoadingSpinner],
+  imports: [RouterLink, EmptyState, LoadingSpinner],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -33,14 +38,6 @@ export class Dashboard {
         this.error.set(null);
       }
     });
-  }
-
-  protected formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
   private load(workspaceId: string): void {

@@ -22,7 +22,7 @@ public interface IArchiveRepository
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support.</summary>
+/// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support; Phase 3 adds OCR claim/update.</summary>
 public interface IDocumentRepository
 {
     Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default);
@@ -31,6 +31,16 @@ public interface IDocumentRepository
     Task<Document?> GetByHashAsync(Guid workspaceId, string sha256Hash, CancellationToken cancellationToken = default);
     Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken cancellationToken = default);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>
+    Task UpdateAsync(Document document, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Atomically claims a queued document for OCR: sets Status=Processing, OcrStatus=Processing
+    /// only when OcrStatus is currently Queued. Returns false when another worker already claimed it
+    /// (or it is no longer queued) — the caller must then skip it, never process it twice.
+    /// </summary>
+    Task<bool> TryClaimForOcrAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
+    /// <summary>Documents waiting for OCR (OcrStatus Queued), oldest first, capped at <paramref name="take"/>.</summary>
+    Task<List<Document>> ListQueuedForOcrAsync(int take, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for audit logs (append-only; no update/delete methods exist by design).</summary>

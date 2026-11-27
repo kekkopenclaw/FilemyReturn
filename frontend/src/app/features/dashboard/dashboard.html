@@ -14,48 +14,34 @@
 } @else if (stats(); as stats) {
   <section class="stat-grid" aria-label="Workspace statistics">
     <article class="stat-card">
-      <span class="stat-value">{{ stats.totalDocuments }}</span>
+      <span class="stat-value">{{ stats.documentCount }}</span>
       <span class="stat-label">Total documents</span>
     </article>
     <article class="stat-card">
-      <span class="stat-value">{{ stats.processedDocuments }}</span>
-      <span class="stat-label">Processed</span>
+      <span class="stat-value">{{ stats.documentsReady }}</span>
+      <span class="stat-label">Ready</span>
     </article>
     <article class="stat-card">
-      <span class="stat-value">{{ stats.awaitingReview }}</span>
-      <span class="stat-label">Awaiting review</span>
+      <span class="stat-value">{{ stats.documentsProcessing }}</span>
+      <span class="stat-label">Processing</span>
     </article>
     <article class="stat-card">
-      <span class="stat-value">{{ stats.failedJobs }}</span>
-      <span class="stat-label">Failed jobs</span>
+      <span class="stat-value">{{ stats.documentsFailed }}</span>
+      <span class="stat-label">Failed</span>
+    </article>
+    <article class="stat-card">
+      <span class="stat-value">{{ stats.ocrPending }}</span>
+      <span class="stat-label">Awaiting OCR</span>
+    </article>
+    <article class="stat-card">
+      <span class="stat-value">{{ stats.memberCount }}</span>
+      <span class="stat-label">Members</span>
     </article>
     <article class="stat-card">
       <span class="stat-value">{{ stats.archiveCount }}</span>
       <span class="stat-label">Archives</span>
     </article>
-    <article class="stat-card">
-      <span class="stat-value">{{ formatBytes(stats.storageBytes) }}</span>
-      <span class="stat-label">Storage used</span>
-    </article>
   </section>
 
-  <section class="recent" aria-labelledby="recent-heading">
-    <h2 id="recent-heading">Recent documents</h2>
-    @if (stats.recentUploads.length === 0) {
-      <app-empty-state
-        message="No documents yet — uploads arrive in Phase 2"
-        detail="Once uploads land, your most recent documents will appear here."
-      />
-    } @else {
-      <ul class="doc-list">
-        @for (doc of stats.recentUploads; track doc.id) {
-          <li class="doc-row">
-            <span class="doc-name">{{ doc.originalFileName }}</span>
-            <span class="doc-meta">{{ doc.createdAt | date: 'medium' }}</span>
-          </li>
-        }
-      </ul>
-      <p><a routerLink="/documents">View all documents →</a></p>
-    }
-  </section>
+  <p><a routerLink="/documents">View all documents →</a></p>
 }

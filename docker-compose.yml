@@ -15,7 +15,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       Database__Provider: ${DATABASE_PROVIDER:-Sqlite}
       ConnectionStrings__Default: ${CONNECTION_STRING:-Data Source=/app/data/docuarchive.db}
-      Jwt__Key: ${JWT_KEY:-DEV_ONLY_PLACEHOLDER_KEY_CHANGE_ME_via_Jwt__Key_env_var_0123456789abcdef}
+      Jwt__Key: ${JWT_KEY:?JWT_KEY must be set in .env (32+ chars) — copy .env.example to .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       Frontend__Origin: http://localhost:4200
       Storage__RootPath: /app/data/storage
@@ -34,7 +34,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: docuarchive
-      POSTGRES_PASSWORD: docuarchive-dev-only
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env — copy .env.example to .env}
       POSTGRES_DB: docuarchive
     ports:
       - "5432:5432"

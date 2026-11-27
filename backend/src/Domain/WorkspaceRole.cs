@@ -12,7 +12,11 @@ public enum WorkspaceRole
     ArchiveManager = 2,
     WorkspaceAdmin = 3,
     WorkspaceOwner = 4,
-    /// <summary>Global platform administrator. Not assigned via workspace membership.</summary>
+    /// <summary>
+    /// Global platform administrator flag on the user. It does NOT grant workspace access:
+    /// a system admin still needs an explicit membership in each workspace (see
+    /// WorkspaceAccessService). Never assigned via workspace membership.
+    /// </summary>
     SystemAdmin = 5
 }
 

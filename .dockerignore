@@ -1,0 +1,18 @@
+# DocuArchive .dockerignore — keep the build context small and secret-free.
+# Patterns without a slash match at any depth (frontend/node_modules, etc.).
+# Build output / dependencies (rebuilt inside the image)
+node_modules
+dist
+.angular
+bin
+obj
+# Local data / secrets (never into the image)
+*.db
+*.db-shm
+*.db-wal
+storage
+.env
+# Version control / IDE
+.git
+.vs
+.idea

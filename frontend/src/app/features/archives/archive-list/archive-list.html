@@ -1,0 +1,73 @@
+<h1>Archives</h1>
+<p class="page-intro">
+  @if (workspaceService.selectedWorkspace(); as workspace) {
+    Archives in <strong>{{ workspace.name }}</strong>. Documents can be filed into an archive when you upload them.
+  } @else {
+    Select a workspace to see its archives.
+  }
+</p>
+
+@if (workspaceService.workspaces().length === 0 && !workspaceService.loading()) {
+  <app-empty-state
+    message="No workspaces yet"
+    detail="Create a workspace first — archives belong to a workspace."
+  />
+} @else {
+  <section class="create-card" aria-labelledby="create-archive-heading">
+    <h2 id="create-archive-heading">Create an archive</h2>
+    <form [formGroup]="form" (ngSubmit)="onCreate()" novalidate>
+      @if (createError()) {
+        <p class="error-banner" role="alert">{{ createError() }}</p>
+      }
+      @if (createSuccess()) {
+        <p class="success-banner" role="status">Archive created.</p>
+      }
+      <div class="field">
+        <label for="archive-name">Name</label>
+        <input
+          id="archive-name"
+          type="text"
+          formControlName="name"
+          [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched"
+        />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p class="field-error">Name is required (up to 200 characters).</p>
+        }
+      </div>
+      <div class="field">
+        <label for="archive-description">Description (optional)</label>
+        <input
+          id="archive-description"
+          type="text"
+          formControlName="description"
+        />
+      </div>
+      <button type="submit" class="btn btn-primary" [disabled]="creating() || !workspaceService.selectedWorkspaceId()">
+        {{ creating() ? 'Creating…' : 'Create archive' }}
+      </button>
+    </form>
+  </section>
+
+  @if (loading()) {
+    <app-loading-spinner />
+  } @else if (error()) {
+    <p class="error-banner" role="alert">{{ error() }}</p>
+  } @else if (archives().length === 0) {
+    <app-empty-state
+      message="No archives yet"
+      detail="Create your first archive above to start organising documents."
+    />
+  } @else {
+    <ul class="archive-list">
+      @for (archive of archives(); track archive.id) {
+        <li class="archive-row">
+          <span class="archive-name">{{ archive.name }}</span>
+          @if (archive.description) {
+            <span class="archive-desc">{{ archive.description }}</span>
+          }
+          <span class="archive-meta">{{ archive.createdAt | date: 'medium' }}</span>
+        </li>
+      }
+    </ul>
+  }
+}

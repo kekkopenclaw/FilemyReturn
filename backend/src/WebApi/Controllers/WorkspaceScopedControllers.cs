@@ -41,9 +41,10 @@ public class DocumentsController : ControllerBase
 {
     private readonly DocumentService _documents;
     private readonly DocumentUploadService _upload;
-    public DocumentsController(DocumentService documents, DocumentUploadService upload)
+    private readonly OcrProcessingService _ocr;
+    public DocumentsController(DocumentService documents, DocumentUploadService upload, OcrProcessingService ocr)
     {
-        _documents = documents; _upload = upload;
+        _documents = documents; _upload = upload; _ocr = ocr;
     }
 
     [HttpGet]
@@ -76,6 +77,15 @@ public class DocumentsController : ControllerBase
         var (doc, stream) = await _documents.GetDownloadAsync(ControllerUser.Id(this), workspaceId, documentId, ct);
         return File(stream, doc.MimeType, doc.OriginalFileName);
     }
+
+    /// <summary>
+    /// Re-runs OCR on a document (Phase 3). StandardUser+ only. Resets the document to Queued,
+    /// clears the previous extraction, and the OCR worker picks it up again. Returns 400 when
+    /// the document is already queued/processing, 404 when the stored file is gone.
+    /// </summary>
+    [HttpPost("{documentId:guid}/reprocess")]
+    public async Task<ActionResult<DocumentDto>> Reprocess(Guid workspaceId, Guid documentId, CancellationToken ct)
+        => Ok(await _ocr.ReprocessAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
 }
 
 /// <summary>Upload history for a workspace (newest first, with uploader).</summary>

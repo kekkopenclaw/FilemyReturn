@@ -21,9 +21,12 @@ COPY backend/DocuArchive.slnx backend/
 COPY backend/src/ backend/src/
 COPY backend/tests/ backend/tests/
 # Copy the Angular production output into wwwroot so dotnet publish ships it.
+# Angular 22 application builder (no outputPath in angular.json) emits
+# dist/frontend/browser/ — index.html MUST be there. Fail loudly if it is not:
+# a silent fallback would ship wwwroot/browser/index.html and the SPA would 404.
 RUN mkdir -p backend/src/WebApi/wwwroot \
-    && cp -r /src/frontend/dist/frontend/browser/. backend/src/WebApi/wwwroot/ 2>/dev/null \
-    || cp -r /src/frontend/dist/frontend/. backend/src/WebApi/wwwroot/
+    && cp -r /src/frontend/dist/frontend/browser/. backend/src/WebApi/wwwroot/ \
+    && test -f backend/src/WebApi/wwwroot/index.html
 WORKDIR /src/backend
 RUN dotnet publish src/WebApi/DocuArchive.Api.csproj -c Release -o /app/publish --nologo
 
@@ -35,7 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 COPY --from=api-build /app/publish ./
 # Writable data dir for the SQLite DB + uploaded files (Render free disk is ephemeral — see DEPLOY.md).
 RUN mkdir -p /app/data/storage
-ENV ASPNETCORE_ENVIRONMENT=Production \
+# Listen on 8080 by default (docker compose maps 5000:8080 and healthchecks :8080).
+# Program.cs calls UseUrls($PORT) when $PORT is set, which takes precedence over
+# ASPNETCORE_URLS — so on Render (which injects $PORT) the app still listens on $PORT,
+# and locally / in compose (no $PORT) it listens on 8080 instead of the ASP.NET
+# Core default localhost:5000, which nothing was mapped to.
+ENV ASPNETCORE_URLS=http://*:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
     Database__Provider=Sqlite \
     ConnectionStrings__Default="Data Source=/app/data/docuarchive.db" \
     Storage__RootPath=/app/data/storage

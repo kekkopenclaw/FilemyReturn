@@ -1,9 +1,12 @@
 using System.Text;
+using System.Text.Json;
+using System.Threading.RateLimiting;
 using DocuArchive.Application;
 using DocuArchive.Infrastructure;
 using DocuArchive.Infrastructure.Data;
 using DocuArchive.WebApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -20,19 +23,20 @@ if (!string.IsNullOrWhiteSpace(portEnv))
     builder.WebHost.UseUrls($"http://*:{port}");
 }
 
-// SECURITY — Production JWT check: the API REFUSES to start in Production when the JWT
-// signing key is missing, is the DEV_ONLY placeholder from appsettings.json, or is
-// shorter than 32 characters. Set a strong random key via Jwt__Key (env var / secret
-// store). The placeholder in appsettings.json is for local development only.
+// SECURITY — JWT check: the API REFUSES to start when the JWT signing key is missing,
+// is the DEV_ONLY placeholder from appsettings.json, or is shorter than 32 characters.
+// The placeholder is only acceptable in Development (local dev default). In every other
+// environment (Production, Staging, Testing, ...) set a strong random key via Jwt__Key
+// (env var / secret store). The placeholder in appsettings.json is for local development only.
 const string devOnlyJwtPlaceholder = "DEV_ONLY_PLACEHOLDER_KEY_CHANGE_ME_via_Jwt__Key_env_var_0123456789abcdef";
 var jwtKeyForCheck = builder.Configuration["Jwt:Key"] ?? string.Empty;
-if (builder.Environment.IsProduction()
+if (!builder.Environment.IsDevelopment()
     && (string.IsNullOrWhiteSpace(jwtKeyForCheck)
         || jwtKeyForCheck == devOnlyJwtPlaceholder
         || jwtKeyForCheck.Length < 32))
 {
     throw new InvalidOperationException(
-        "Refusing to start in Production: Jwt:Key is missing, is the DEV_ONLY placeholder, or is shorter than 32 characters. " +
+        "Refusing to start: Jwt:Key is missing, is the DEV_ONLY placeholder, or is shorter than 32 characters. " +
         "Set a strong random Jwt__Key via environment variable or secret store.");
 }
 
@@ -43,7 +47,9 @@ builder.Services.Configure<StorageSettings>(builder.Configuration.GetSection("St
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
-builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
+// Health: /health is liveness only (process up, no DB dependency) so a database
+// outage does not make the container look dead; /health/ready includes the DB check.
+builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
 // CORS: locked to the configured frontend origin (default http://localhost:4200).
 var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:4200";
@@ -77,12 +83,29 @@ builder.Services.AddAuthentication(options =>
     });
 builder.Services.AddAuthorization();
 
-// Rate limiting: fixed window; stricter on /api/auth/*.
+// Rate limiting, partitioned per client — never one global bucket shared by all callers.
+// "default": one fixed window per client IP (120/min). "auth": one fixed window per
+// client IP + account email (30/min), so a brute-force attack on one account cannot
+// exhaust the budget for everyone else, and one IP cannot hammer many accounts either.
+// The email is stashed by the middleware below (best-effort; falls back to IP-only).
+// Account-level brute force is additionally stopped by Identity lockout (5 failures -> 423).
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
-    options.AddFixedWindowLimiter("default", o => { o.PermitLimit = 120; o.Window = TimeSpan.FromMinutes(1); });
-    options.AddFixedWindowLimiter("auth", o => { o.PermitLimit = 30; o.Window = TimeSpan.FromMinutes(1); });
+    options.AddPolicy("default", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: ClientIp(context),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120, Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0, AutoReplenishment = true
+        }));
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: AuthPartitionKey(context),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30, Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0, AutoReplenishment = true
+        }));
 });
 
 // Swagger / OpenAPI (Swashbuckle, MIT licence, free and open-source).
@@ -113,6 +136,43 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+
+// Best-effort: stash the login email (first 4 KiB of a JSON auth request body) so the
+// "auth" rate limiter can partition per account as well as per IP. Never fails the
+// request: any read/parse problem falls back to IP-only partitioning. The body is
+// buffered and rewound so model binding still sees it untouched.
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsPost(context.Request.Method)
+        && context.Request.Path.StartsWithSegments("/api/auth")
+        && context.Request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        try
+        {
+            context.Request.EnableBuffering();
+            var buffer = new byte[4096];
+            var read = await context.Request.Body.ReadAsync(buffer, context.RequestAborted);
+            context.Request.Body.Position = 0;
+            if (read > 0)
+            {
+                using var json = JsonDocument.Parse(buffer.AsMemory(0, read));
+                if (json.RootElement.TryGetProperty("email", out var email)
+                    && email.ValueKind == JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(email.GetString()))
+                {
+                    context.Items["AuthEmail"] = email.GetString()!;
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort only: a body that cannot be read/parsed just means IP-only limiting.
+            try { context.Request.Body.Position = 0; } catch { /* body unusable; let model binding report it */ }
+        }
+    }
+    await next();
+});
+
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -127,7 +187,10 @@ if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
     app.UseStaticFiles();
 }
 
-app.MapHealthChecks("/health");
+// Liveness: no checks, so the process reports healthy even when the DB is down.
+// Readiness: runs the tagged checks (database) — use for deploy gates, not liveness.
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready");
 app.MapControllers(); // Rate-limit policies are set per controller: "auth" on AuthController, "default" elsewhere.
 
 // SPA fallback: unknown non-API routes serve the Angular app (only when wwwroot exists).
@@ -136,14 +199,42 @@ if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
     app.MapFallbackToFile("index.html");
 }
 
-// Development-only seed (admin@docuarchive.local; password from ADMIN_PASSWORD env var,
-// or a generated one printed once to the log in Development). Never in Production.
+// Startup: migrate the database in ALL environments before serving traffic.
+// Production never ran migrations before this change (MigrateAsync only ran inside the
+// Development-only seed), so a fresh Production database had no tables at all.
+await SeedData.MigrateAsync(app.Services);
+
 if (app.Environment.IsDevelopment())
 {
+    // Development-only demo seed (admin@docuarchive.local; password from ADMIN_PASSWORD
+    // env var, or a generated one printed once to the log). Never in Production.
     await SeedData.EnsureSeededAsync(app.Services);
+}
+else if (app.Environment.IsProduction())
+{
+    // Production first-run bootstrap: creates admin@docuarchive.local from ADMIN_PASSWORD
+    // only when no users exist yet. Throws at startup when ADMIN_PASSWORD is missing.
+    await SeedData.EnsureProductionAdminAsync(app.Services);
 }
 
 app.Run();
 
 /// <summary>Entry point exposed for WebApplicationFactory integration tests.</summary>
-public partial class Program { }
+public partial class Program
+{
+    /// <summary>Client IP for rate-limit partitioning ("unknown" when unavailable).</summary>
+    internal static string ClientIp(HttpContext context)
+        => context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    /// <summary>
+    /// Auth rate-limit partition: client IP + account email when the login email was
+    /// stashed by the middleware above; IP-only otherwise.
+    /// </summary>
+    internal static string AuthPartitionKey(HttpContext context)
+    {
+        var ip = ClientIp(context);
+        return context.Items["AuthEmail"] is string email
+            ? $"{ip}:{email.Trim().ToLowerInvariant()}"
+            : ip;
+    }
+}

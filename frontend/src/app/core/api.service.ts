@@ -37,11 +37,53 @@ export class ApiService {
     );
   }
 
+  createArchive(
+    workspaceId: string,
+    name: string,
+    description?: string,
+  ): Observable<Archive> {
+    return this.http.post<Archive>(
+      `${this.baseUrl}/workspaces/${workspaceId}/archives`,
+      { name, description: description || null },
+    );
+  }
+
   // -- Documents ----------------------------------------------------------
 
   getDocuments(workspaceId: string): Observable<DocumentSummary[]> {
     return this.http.get<DocumentSummary[]>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents`,
+    );
+  }
+
+  /**
+   * Upload a document (multipart/form-data, field 'file'; optional
+   * ?archiveId=). Returns the created document. The backend rejects exact
+   * duplicates per workspace with 409 and oversized files with 413.
+   */
+  uploadDocument(
+    workspaceId: string,
+    file: File,
+    archiveId?: string,
+  ): Observable<DocumentSummary> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const query = archiveId ? `?archiveId=${encodeURIComponent(archiveId)}` : '';
+    return this.http.post<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents${query}`,
+      form,
+    );
+  }
+
+  /**
+   * Download a document's stored bytes as a Blob. The backend sets the
+   * original file name in Content-Disposition; callers should use
+   * doc.originalFileName as the save name.
+   */
+  downloadDocument(workspaceId: string, documentId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/download`,
+      { responseType: 'blob' },
     );
   }
 

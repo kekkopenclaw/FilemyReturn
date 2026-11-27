@@ -49,7 +49,12 @@ public record ArchiveDto(Guid Id, Guid WorkspaceId, string Name, string? Descrip
 public record DocumentDto(
     Guid Id, Guid WorkspaceId, Guid? ArchiveId, string OriginalFileName,
     string Sha256Hash, long FileSizeBytes, string MimeType,
-    string Status, string OcrStatus, DateTime CreatedAt, string CreatedById);
+    string Status, string OcrStatus, DateTime CreatedAt, string CreatedById,
+    // Phase 3 OCR / receipt extraction — all null until OCR runs (backward compatible: optional).
+    string? OcrText = null, double? OcrConfidence = null,
+    string? ExtractedVendor = null, DateTime? ExtractedDate = null,
+    decimal? ExtractedTotal = null, string? ExtractedCurrency = null,
+    string? SuggestedCategory = null);
 
 public record DashboardDto(
     Guid WorkspaceId, int ArchiveCount, int DocumentCount, int MemberCount,

@@ -13,6 +13,17 @@ function isAuthEndpoint(req: HttpRequest<unknown>): boolean {
 }
 
 /**
+ * Change-password is an auth endpoint too for retry purposes: a failed
+ * first-login password change (wrong current password) must stay on the
+ * change-password page with its own error, not trigger a token refresh
+ * and a redirect to /login. The Bearer token is still attached above
+ * when one exists, so signed-in users take the authenticated path.
+ */
+function isChangePassword(req: HttpRequest<unknown>): boolean {
+  return /\/auth\/change-password$/.test(req.url);
+}
+
+/**
  * Adds the in-memory Bearer token to API calls. On a 401, tries one token
  * refresh and replays the original request; if the refresh fails, the
  * session is cleared and the user is sent to /login.
@@ -31,7 +42,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (
         err instanceof HttpErrorResponse &&
         err.status === 401 &&
-        !isAuthEndpoint(req)
+        !isAuthEndpoint(req) &&
+        !isChangePassword(req)
       ) {
         return auth.refresh().pipe(
           switchMap(() => {

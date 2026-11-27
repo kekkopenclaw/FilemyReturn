@@ -152,6 +152,15 @@ textarea:focus-visible {
   color: var(--color-accent-dark);
 }
 
+.info-banner {
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  color: #1d4ed8;
+}
+
 /* -- Buttons ------------------------------------------------------------ */
 
 .btn {

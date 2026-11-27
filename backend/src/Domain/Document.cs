@@ -43,6 +43,16 @@ public class Document
     public OcrStatus OcrStatus { get; set; } = OcrStatus.NotStarted;
     /// <summary>Extracted text. Null until Phase 3 OCR runs. Never invented.</summary>
     public string? OcrText { get; set; }
+    /// <summary>Mean word confidence (0-100) reported by the OCR engine, or null when the engine does not report one (e.g. embedded PDF text).</summary>
+    public double? OcrConfidence { get; set; }
+    /// <summary>Receipt fields extracted from <see cref="OcrText"/> by <c>ReceiptFieldExtractor</c> (Phase 3). All null until OCR + extraction run.</summary>
+    public string? ExtractedVendor { get; set; }
+    public DateTime? ExtractedDate { get; set; }
+    public decimal? ExtractedTotal { get; set; }
+    /// <summary>Currency symbol found next to the total (£, $, € …), or null.</summary>
+    public string? ExtractedCurrency { get; set; }
+    /// <summary>Category suggested from the extracted fields (currently "Receipt" only). A suggestion, not a fact — the UI must show it as such.</summary>
+    public string? SuggestedCategory { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public required string CreatedById { get; set; }

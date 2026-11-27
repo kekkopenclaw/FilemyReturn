@@ -3,7 +3,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AuthResponse, RegisterResponse, User } from './models';
+import { AuthResponse, ChangePasswordRequest, RegisterResponse, User } from './models';
 
 const REFRESH_TOKEN_KEY = 'docdigit.refreshToken';
 
@@ -54,6 +54,28 @@ export class AuthService {
       password,
       displayName,
     });
+  }
+
+  /**
+   * Change a password via POST /api/auth/change-password (204 on success).
+   * Works both for a signed-in user (Bearer token attached, email ignored)
+   * and for the first-login flow (no token; email + current password are
+   * required and the account must be flagged MustChangePassword).
+   */
+  changePassword(
+    email: string | null,
+    currentPassword: string,
+    newPassword: string,
+  ): Observable<void> {
+    const body: ChangePasswordRequest = {
+      email: email || null,
+      currentPassword,
+      newPassword,
+    };
+    return this.http.post<void>(
+      `${this.baseUrl}/auth/change-password`,
+      body,
+    );
   }
 
   /**

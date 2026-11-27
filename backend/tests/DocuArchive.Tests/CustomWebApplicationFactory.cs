@@ -29,7 +29,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             new Dictionary<string, string?>
             {
                 ["Storage:MaxFileSizeBytes"] = "1024",
-                ["Storage:RootPath"] = _storagePath
+                ["Storage:RootPath"] = _storagePath,
+                // Test-only JWT key: Program.cs refuses to start outside Development with
+                // the DEV_ONLY placeholder, so tests must supply a real (test-only) key.
+                ["Jwt:Key"] = "TestOnlyJwtKeyForIntegrationTests0123456789abcdef"
             }));
         builder.ConfigureServices(services =>
         {

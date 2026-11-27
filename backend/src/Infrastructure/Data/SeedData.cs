@@ -11,19 +11,76 @@ using Microsoft.Extensions.Logging;
 namespace DocuArchive.Infrastructure.Data;
 
 /// <summary>
-/// Development-only seed data. NEVER runs in Production: Program.cs only calls it when
-/// the environment is Development, and this method refuses to run in Production too.
+/// Database migration + seed data.
+/// <list type="bullet">
+/// <item><see cref="MigrateAsync"/> runs in ALL environments (called from Program.cs before the app serves traffic).</item>
+/// <item><see cref="EnsureSeededAsync"/> is Development-only demo data.</item>
+/// <item><see cref="EnsureProductionAdminAsync"/> is the Production first-run admin bootstrap: it creates
+/// <c>admin@docuarchive.local</c> from the <c>ADMIN_PASSWORD</c> environment variable, only when no users
+/// exist yet. No demo workspace, no generated password in Production.</item>
+/// </list>
 ///
 /// SECURITY: there is NO hardcoded seed password anywhere in this codebase. The seed
 /// admin password comes from the <c>ADMIN_PASSWORD</c> environment variable. If it is not
-/// set and the environment is not Development, seeding fails loudly. In Development only,
-/// if it is unset, a random password is generated at runtime and printed ONCE to the
-/// console/log (never written to any file). The seeded admin is flagged
-/// <c>MustChangePassword</c> and cannot log in until the password is changed.
+/// set, seeding/bootstrap fails loudly. In Development only, if it is unset, a random
+/// password is generated at runtime and printed ONCE to the console/log (never written to
+/// any file). The seeded admin is flagged <c>MustChangePassword</c> and cannot log in
+/// until the password is changed.
 /// </summary>
 public static class SeedData
 {
     public const string AdminEmail = "admin@docuarchive.local";
+
+    /// <summary>Applies pending EF Core migrations. Runs in every environment, before the app serves traffic.</summary>
+    public static async Task MigrateAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
+    /// <summary>
+    /// Production first-run admin bootstrap. Creates the admin account from
+    /// <c>ADMIN_PASSWORD</c> only when the database has no users yet (fresh deploy).
+    /// Throws when the environment is not Production, when ADMIN_PASSWORD is missing or
+    /// shorter than 12 characters, or when admin creation fails. Never creates demo data.
+    /// </summary>
+    public static async Task EnsureProductionAdminAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var provider = scope.ServiceProvider;
+        var environment = provider.GetRequiredService<IHostEnvironment>();
+        if (!environment.IsProduction())
+            throw new InvalidOperationException("EnsureProductionAdminAsync must only run in Production.");
+
+        var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
+        var db = provider.GetRequiredService<AppDbContext>();
+        if (await db.Users.AnyAsync()) return; // Already bootstrapped — never recreate the admin.
+
+        var configuration = provider.GetRequiredService<IConfiguration>();
+        var adminPassword = configuration["ADMIN_PASSWORD"];
+        if (string.IsNullOrWhiteSpace(adminPassword))
+            throw new InvalidOperationException(
+                "ADMIN_PASSWORD environment variable is not set. Set ADMIN_PASSWORD (12+ characters) to create the first admin account.");
+        if (adminPassword.Length < 12)
+            throw new InvalidOperationException("ADMIN_PASSWORD must be at least 12 characters (password policy).");
+
+        var users = provider.GetRequiredService<UserManager<ApplicationUser>>();
+        var admin = new ApplicationUser
+        {
+            UserName = AdminEmail, Email = AdminEmail,
+            DisplayName = "Admin", IsSystemAdmin = true,
+            MustChangePassword = true
+        };
+        var result = await users.CreateAsync(admin, adminPassword);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+            logger.LogError("Production admin creation failed: {Errors}", errors);
+            throw new InvalidOperationException($"Failed to create the production admin account: {errors}");
+        }
+        logger.LogInformation("Production admin account created: {Email} (must change password on first login)", AdminEmail);
+    }
 
     public static async Task EnsureSeededAsync(IServiceProvider services)
     {
@@ -35,8 +92,7 @@ public static class SeedData
 
         var configuration = provider.GetRequiredService<IConfiguration>();
         var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
-        var db = provider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        // NOTE: migrations already ran in Program.cs (MigrateAsync, all environments).
         var users = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
         var adminPassword = configuration["ADMIN_PASSWORD"];
@@ -78,6 +134,7 @@ public static class SeedData
         }
 
         var workspaceRepo = provider.GetRequiredService<IWorkspaceRepository>();
+        var db = provider.GetRequiredService<AppDbContext>();
         var existing = await db.Workspaces.FirstOrDefaultAsync(w => w.Name == "Demo Archive");
         if (existing is null)
         {

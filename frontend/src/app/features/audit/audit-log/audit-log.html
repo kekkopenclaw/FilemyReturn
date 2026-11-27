@@ -1,0 +1,56 @@
+<h1>Audit log</h1>
+<p class="page-intro">
+  @if (workspaceService.selectedWorkspace(); as workspace) {
+    Every recorded action in <strong>{{ workspace.name }}</strong>, newest first.
+  } @else {
+    Select a workspace to see its audit log.
+  }
+</p>
+
+@if (workspaceService.workspaces().length === 0 && !workspaceService.loading()) {
+  <app-empty-state
+    message="No workspaces yet"
+    detail="Create a workspace first — audit entries belong to a workspace."
+  />
+} @else if (loading()) {
+  <app-loading-spinner />
+} @else if (error()) {
+  <p class="error-banner" role="alert">{{ error() }}</p>
+} @else if (entries().length === 0) {
+  <app-empty-state
+    message="No audit entries yet"
+    detail="Actions in this workspace will appear here."
+  />
+} @else {
+  <div class="table-wrap">
+    <table class="doc-table">
+      <caption class="visually-hidden">Audit log for the selected workspace</caption>
+      <thead>
+        <tr>
+          <th scope="col">When</th>
+          <th scope="col">Action</th>
+          <th scope="col">Entity</th>
+          <th scope="col">User</th>
+          <th scope="col">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td>{{ entry.createdAt | date: 'medium' }}</td>
+            <td>{{ entry.action }}</td>
+            <td>
+              @if (entry.entityType) {
+                {{ entry.entityType }} {{ shortId(entry.entityId) }}
+              } @else {
+                —
+              }
+            </td>
+            <td>{{ shortId(entry.userId) }}</td>
+            <td class="details-cell">{{ entry.details ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

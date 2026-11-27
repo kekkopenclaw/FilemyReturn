@@ -46,7 +46,7 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("application/pdf", doc.MimeType);
         Assert.Equal(200, doc.FileSizeBytes);
         Assert.Equal("Uploaded", doc.Status);
-        Assert.Equal("NotStarted", doc.OcrStatus);
+        Assert.Equal("Queued", doc.OcrStatus); // Phase 3: upload queues OCR (was NotStarted in Phase 2).
         Assert.False(string.IsNullOrWhiteSpace(doc.Sha256Hash));
 
         var list = await client.GetAsync($"/api/workspaces/{workspaceId}/documents");

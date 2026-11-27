@@ -62,6 +62,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(d => d.MimeType).IsRequired().HasMaxLength(200);
             e.Property(d => d.Status).HasConversion<string>().HasMaxLength(32);
             e.Property(d => d.OcrStatus).HasConversion<string>().HasMaxLength(32);
+            // Phase 3 receipt extraction (all nullable until OCR runs).
+            e.Property(d => d.OcrText);
+            e.Property(d => d.OcrConfidence);
+            e.Property(d => d.ExtractedVendor).HasMaxLength(200);
+            e.Property(d => d.ExtractedDate);
+            e.Property(d => d.ExtractedTotal).HasColumnType("decimal(18,2)");
+            e.Property(d => d.ExtractedCurrency).HasMaxLength(8);
+            e.Property(d => d.SuggestedCategory).HasMaxLength(64);
+            e.HasIndex(d => d.OcrStatus); // the OCR worker polls for Queued documents.
             e.HasIndex(d => d.WorkspaceId);
             e.HasIndex(d => d.ArchiveId);
             e.HasIndex(d => d.CreatedAt);

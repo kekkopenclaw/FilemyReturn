@@ -54,10 +54,7 @@ public class DocumentService
         _documents = documents; _access = access; _storage = storage; _users = users;
     }
 
-    private static DocumentDto ToDto(Document d) => new(
-        d.Id, d.WorkspaceId, d.ArchiveId, d.OriginalFileName, d.Sha256Hash,
-        d.FileSizeBytes, d.MimeType, d.Status.ToString(), d.OcrStatus.ToString(),
-        d.CreatedAt, d.CreatedById);
+    private static DocumentDto ToDto(Document d) => DocumentDtos.ToDto(d);
 
     public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default)
     {
