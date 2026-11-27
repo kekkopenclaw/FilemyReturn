@@ -55,6 +55,19 @@ public class WorkspacesController : ControllerBase
         return CreatedAtAction(nameof(ListMembers), new { workspaceId }, member);
     }
 
+    /// <summary>Removes a member. WorkspaceOwner / WorkspaceAdmin only; the last owner cannot be removed.</summary>
+    [HttpDelete("{workspaceId:guid}/members/{memberUserId}")]
+    public async Task<IActionResult> RemoveMember(Guid workspaceId, string memberUserId, CancellationToken ct)
+    {
+        await _workspaces.RemoveMemberAsync(ControllerUser.Id(this), workspaceId, memberUserId, ct);
+        return NoContent();
+    }
+
+    /// <summary>Changes a member's role. WorkspaceOwner / WorkspaceAdmin only; ownership cannot be granted or removed here.</summary>
+    [HttpPatch("{workspaceId:guid}/members/{memberUserId}")]
+    public async Task<ActionResult<MemberDto>> ChangeMemberRole(Guid workspaceId, string memberUserId, [FromBody] ChangeMemberRoleRequest request, CancellationToken ct)
+        => Ok(await _workspaces.ChangeMemberRoleAsync(ControllerUser.Id(this), workspaceId, memberUserId, request.Role, ct));
+
     /// <summary>Deletes a workspace. WorkspaceOwner only.</summary>
     [HttpDelete("{workspaceId:guid}")]
     public async Task<IActionResult> Delete(Guid workspaceId, CancellationToken ct)
