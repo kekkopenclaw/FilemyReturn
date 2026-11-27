@@ -9,6 +9,12 @@ public interface IWorkspaceRepository
     Task<WorkspaceMembership?> GetMembershipAsync(Guid workspaceId, string userId, CancellationToken cancellationToken = default);
     Task<List<WorkspaceMembership>> ListMembersAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     Task AddMembershipAsync(WorkspaceMembership membership, CancellationToken cancellationToken = default);
+    /// <summary>Removes a membership (member removal). No-op when the membership does not exist.</summary>
+    Task RemoveMembershipAsync(Guid workspaceId, string userId, CancellationToken cancellationToken = default);
+    /// <summary>Changes a member's role (persisted via the tracked membership).</summary>
+    Task UpdateMembershipAsync(WorkspaceMembership membership, CancellationToken cancellationToken = default);
+    /// <summary>Counts members holding <see cref="WorkspaceRole.WorkspaceOwner"/> — used to protect the last owner.</summary>
+    Task<int> CountOwnersAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     Task DeleteAsync(Workspace workspace, CancellationToken cancellationToken = default);
     Task<int> CountMembersAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }
@@ -58,4 +64,10 @@ public interface IRefreshTokenRepository
     Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default);
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
     Task RevokeAsync(RefreshToken token, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Revokes every refresh token of a user (password change, or a stolen token presented
+    /// again — refresh-token reuse). Revocation is soft (RevokedAt is set); rows are kept
+    /// so a later reuse of any of them is still detectable.
+    /// </summary>
+    Task RevokeAllForUserAsync(string userId, CancellationToken cancellationToken = default);
 }
