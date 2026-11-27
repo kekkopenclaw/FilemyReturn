@@ -48,20 +48,44 @@ public class DocumentService
     private readonly IWorkspaceAccessService _access;
     private readonly IDocumentStorage _storage;
     private readonly IUserIdentityService _users;
+    private readonly IAuditService _audit;
 
-    public DocumentService(IDocumentRepository documents, IWorkspaceAccessService access, IDocumentStorage storage, IUserIdentityService users)
+    public DocumentService(IDocumentRepository documents, IWorkspaceAccessService access, IDocumentStorage storage, IUserIdentityService users, IAuditService audit)
     {
-        _documents = documents; _access = access; _storage = storage; _users = users;
+        _documents = documents; _access = access; _storage = storage; _users = users; _audit = audit;
     }
 
     private static DocumentDto ToDto(Document d) => DocumentDtos.ToDto(d);
 
     /// <summary>Lists a workspace's documents, newest first. Optional <paramref name="search"/>
-    /// matches file name, extracted vendor or the full OCR text (Phase 3 full-text search).</summary>
-    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null)
+    /// matches file name, extracted vendor or the full OCR text (Phase 3 full-text search).
+    /// Optional <paramref name="needsReview"/> restricts to the human-review queue.</summary>
+    public async Task<List<DocumentDto>> ListAsync(string userId, Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null)
     {
         await _access.RequireMembershipAsync(workspaceId, userId, ct);
-        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct, search)).Select(ToDto).ToList();
+        return (await _documents.ListByWorkspaceAsync(workspaceId, archiveId, ct, search, needsReview)).Select(ToDto).ToList();
+    }
+
+    /// <summary>
+    /// Human review: confirms or corrects a document's category (Phase 3 classification).
+    /// StandardUser+ only. The confirmed category overrides the suggestion and clears the
+    /// review flag; the previous suggestion stays visible in the audit log. 400 on an
+    /// unknown category, 404 on a missing document.
+    /// </summary>
+    public async Task<DocumentDto> ConfirmCategoryAsync(string userId, Guid workspaceId, Guid documentId, string category, CancellationToken ct = default)
+    {
+        await _access.RequireRoleAsync(workspaceId, userId, WorkspaceRole.StandardUser, ct);
+        if (!DocumentClassifier.IsKnownCategory(category))
+            throw new ValidationException($"Unknown category '{category}'. Use one of: {string.Join(", ", DocumentClassifier.Categories)}.");
+        var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
+        var previous = doc.ConfirmedCategory ?? doc.SuggestedCategory ?? "—";
+        doc.ConfirmedCategory = category;
+        doc.SuggestedCategory = category;
+        doc.NeedsReview = false;
+        await _documents.UpdateAsync(doc, ct);
+        await _audit.LogAsync(userId, workspaceId, "Document.CategoryConfirmed", "Document", doc.Id.ToString(),
+            $"{doc.OriginalFileName}: category {previous} → {category}", ct);
+        return ToDto(doc);
     }
 
     public async Task<DocumentDto> GetAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
@@ -123,7 +147,8 @@ public class DashboardService
             docs.Count(d => d.Status == DocumentStatus.Ready),
             docs.Count(d => d.Status == DocumentStatus.Processing),
             docs.Count(d => d.Status == DocumentStatus.Failed),
-            docs.Count(d => d.OcrStatus == OcrStatus.NotStarted || d.OcrStatus == OcrStatus.Queued));
+            docs.Count(d => d.OcrStatus == OcrStatus.NotStarted || d.OcrStatus == OcrStatus.Queued),
+            docs.Count(d => d.NeedsReview));
     }
 }
 
