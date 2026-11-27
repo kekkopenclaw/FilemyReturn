@@ -39,4 +39,21 @@ public static class FileValidation
             return "image/webp"; // RIFF....WEBP
         return null;
     }
+
+    /// <summary>
+    /// True when a filename extension (without the dot, lower-cased) is one of the normal
+    /// extensions for the detected MIME type. Files without an extension are accepted by the
+    /// caller; a present extension that disagrees with the magic bytes is rejected there.
+    /// </summary>
+    public static bool ExtensionMatchesMime(string extension, string mimeType) => (extension, mimeType) switch
+    {
+        ("pdf", "application/pdf") => true,
+        ("png", "image/png") => true,
+        ("jpg" or "jpeg", "image/jpeg") => true,
+        ("gif", "image/gif") => true,
+        ("tif" or "tiff", "image/tiff") => true,
+        ("bmp", "image/bmp") => true,
+        ("webp", "image/webp") => true,
+        _ => false
+    };
 }
