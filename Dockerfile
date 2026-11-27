@@ -21,12 +21,15 @@ COPY backend/DocuArchive.slnx backend/
 COPY backend/src/ backend/src/
 COPY backend/tests/ backend/tests/
 # Copy the Angular production output into wwwroot so dotnet publish ships it.
+# The Angular output lives in the web-build stage's filesystem — Docker stages
+# are isolated, so it must be transferred with COPY --from (a plain `cp` of
+# /src/frontend/dist/... inside THIS stage fails: that path does not exist here,
+# which is exactly why the Render build failed with "Exited with status 1").
 # Angular 22 application builder (no outputPath in angular.json) emits
 # dist/frontend/browser/ — index.html MUST be there. Fail loudly if it is not:
 # a silent fallback would ship wwwroot/browser/index.html and the SPA would 404.
-RUN mkdir -p backend/src/WebApi/wwwroot \
-    && cp -r /src/frontend/dist/frontend/browser/. backend/src/WebApi/wwwroot/ \
-    && test -f backend/src/WebApi/wwwroot/index.html
+COPY --from=web-build /src/frontend/dist/frontend/browser/. backend/src/WebApi/wwwroot/
+RUN test -f backend/src/WebApi/wwwroot/index.html
 WORKDIR /src/backend
 RUN dotnet publish src/WebApi/DocuArchive.Api.csproj -c Release -o /app/publish --nologo
 
