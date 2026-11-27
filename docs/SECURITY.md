@@ -2,7 +2,9 @@
 
 How DocuArchive protects accounts, data and uploads. This document describes
 what is implemented in the code today (27 November 2026); anything listed
-here is verifiable in the repository, not aspirational.
+here is verifiable in the repository, not aspirational. The "Not yet built"
+section at the end lists the items that are deliberately open, with the
+reason — nothing here is claimed that the code does not do.
 
 ## Authentication
 
@@ -11,6 +13,38 @@ here is verifiable in the repository, not aspirational.
   (`Jwt:AccessTokenMinutes` / `Jwt:RefreshTokenDays` in `appsettings.json`).
 - Passwords are hashed by Identity (PBKDF2). No password is ever stored or
   logged in plain text.
+- **Refresh tokens live in an HttpOnly cookie, never in localStorage.**
+  Login and refresh set a `docuarchive.refresh` cookie
+  (`HttpOnly`, `SameSite=Lax`, `Secure` outside Development,
+  `Path=/api/auth`, 7-day `MaxAge`); the refresh token is **never** in a
+  response body, and the frontend stores nothing (a legacy localStorage key
+  is purged on startup). Refresh and logout read the cookie first, with a
+  body fallback only for non-browser clients. Tokens are base64url, so the
+  cookie value is never percent-encoded and always matches the stored hash.
+- **Refresh-token rotation with reuse detection.** Every refresh rotates
+  the token. Presenting an already-rotated (revoked) token is treated as
+  theft: all refresh tokens for the account are revoked at once and the
+  attempt is audited (`Auth.RefreshTokenReuse`).
+- **Changing a password revokes all refresh tokens** for the account, so a
+  token stolen before the change cannot survive it. (The 15-minute access
+  tokens already issued expire on their own and cannot be minted anew.)
+- **Brute-force protection.** Auth endpoints are rate-limited to **30
+  requests/minute** per IP + account (see below), and Identity locks an
+  account after **5 failed logins** (HTTP 423).
+- **Errors do not enumerate accounts.** Login, registration, password
+  reset and first-login password change all return the same generic error
+  whether the account exists or not, so the API cannot be used to probe
+  which emails have accounts.
+
+## Rate limiting
+
+`backend/src/WebApi/Program.cs` (fixed-window, no queue, HTTP 429 on
+rejection):
+
+- Default policy: **120 requests/minute per client IP**.
+- Auth policy (login / register / refresh / password change): **30
+  requests/minute**, partitioned per IP and per account email where the
+  request carries one.
 
 ## Secrets — environment only, never in the repo
 
@@ -39,8 +73,18 @@ here is verifiable in the repository, not aspirational.
 - Every document, workspace and archive operation goes through
   `IWorkspaceAccessService`: a user can only see or change workspaces they
   belong to, and only in the role they hold there.
-- Roles: workspace Owner / Admin / Member, plus a system admin flag.
-  Changing a member's role is an audited, authorised operation.
+- Roles: `ReadOnly` / `StandardUser` / `ArchiveManager` /
+  `WorkspaceAdmin` / `WorkspaceOwner`, plus a `SystemAdmin` flag on the
+  user. The flag does **not** grant workspace access — a system admin
+  still needs an explicit membership in each workspace. Changing a
+  member's role and removing a member require `WorkspaceAdmin` or above,
+  and only the owner can remove or re-role the owner; the
+  `WorkspaceOwner` role can never be assigned through a role change.
+- Workspace deletion calls `DeleteAsync` on the workspace (owner only):
+  the workspace row, its documents, archives, tags, rules and memberships
+  are removed and the stored files deleted — but audit entries **survive**
+  (foreign key `SetNull`, not `Cascade`), so deleting a workspace does not
+  erase its audit trail, including the `Workspace.Deleted` record itself.
 - Isolation is covered by automated tests that must pass before any push:
   `backend/tests/DocuArchive.Tests/IsolationTests.cs`,
   `AuthorizationTests.cs`, `SecurityAuditTests.cs`.
@@ -65,6 +109,9 @@ response:
   (`FileValidation.ExtensionMatchesMime`); mismatches are rejected.
   Uploads are streamed with a size cap — an over-limit body is rejected
   before it is stored.
+- **Duplicate uploads are rejected with HTTP 409.** Every file is hashed
+  (SHA-256) and an exact duplicate in the same workspace is refused, even
+  under a race (the unique index wins and the second upload gets 409).
 - Files are stored on local disk under `Storage:RootPath` (default
   `storage/`), never executed, and served back only through authenticated
   endpoints. Previews (`GET …/documents/{id}/preview`) use inline
@@ -74,15 +121,59 @@ response:
 
 - OCR is **self-hosted Tesseract** (CPU-only, in-process worker). Document
   text never leaves the server for a third-party OCR or AI service.
-- Default database is local **SQLite**; PostgreSQL is supported via
-  `Database:Provider`. On the Render Free tier the SQLite file resets on
-  redeploy — that is a known platform limit, not a data leak.
+
+## Database — SQLite is demo-only
+
+- The default database is local **SQLite**. It is fine for local
+  development and for the live demo, but it is **not a production
+  database**: on the Render Free tier the SQLite file lives on ephemeral
+  disk and **resets on every redeploy** — uploads and accounts created on
+  the live site do not survive a deploy.
+- A production deployment must use **PostgreSQL**. Locally, Postgres is
+  behind the `postgres` profile in `docker-compose.yml` — it never starts
+  unless asked for (`docker compose --profile postgres up`, with
+  `DATABASE_PROVIDER=Postgres` and a matching `CONNECTION_STRING` in
+  `.env`); the default `docker compose up` run is SQLite-only and needs no
+  Postgres password.
+- The runtime image runs as a **non-root user** (`USER app` in the
+  `Dockerfile`).
 
 ## Audit logging
 
-Reads and writes that matter are audited, including document views
-(`Document.Viewed`), uploads, category confirmations and role changes.
-Audit entries record who did what, when, and in which workspace.
+Reads and writes that matter are audited — who did what, when, and in
+which workspace. The audited actions include:
+
+- Auth: `Auth.Registered`, `Auth.Login`, `Auth.LoginFailed`,
+  `Auth.Refresh`, `Auth.RefreshTokenReuse`, `Auth.PasswordChanged`.
+- Documents: `Document.Uploaded`, `Document.Downloaded`,
+  `Document.DownloadFailed` (stored file missing — the row exists but the
+  bytes are gone), `Document.Viewed`, `Document.ViewFailed`,
+  `Document.MetadataUpdated` (only when something actually changes),
+  `Document.CategoryConfirmed`, `Document.Tagged`, `Document.Untagged`,
+  `Document.RuleFiled`, `Document.RuleEvaluationFailed`,
+  `Document.OcrCompleted`, `Document.OcrFailed`,
+  `Document.OcrReprocessRequested`.
+- Organisation: `Tag.Created`, `Tag.Deleted`, `FilingRule.Created`,
+  `FilingRule.Updated`, `FilingRule.Deleted`.
+- Workspaces: `Workspace.Created`, `Workspace.Deleted`,
+  `Workspace.MemberAdded`, `Workspace.MemberRemoved`,
+  `Workspace.MemberRoleChanged`, `Workspace.AccessDenied`.
+- Archives: `Archive.Created`.
+
+Audit entries survive workspace deletion (see above) and are read-only —
+there is no edit or delete endpoint for the audit log.
+
+## Not yet built (deliberately open)
+
+- **Email verification on registration.** Not built: it needs a real
+  email provider account (only a log-only `LogEmailService` exists for
+  development). Until one is connected, registration does not send mail
+  and accounts are usable immediately.
+- **CAPTCHA on registration.** Not built: it needs hCaptcha/Turnstile
+  keys, which only the repository owner can provide. Registration is
+  protected meanwhile by the auth rate limit and Identity lockout above.
+- Both items are blocked on accounts/keys only the owner can supply — see
+  `TODO.md`. Nothing else on the security list is open.
 
 ## Reporting a vulnerability
 
