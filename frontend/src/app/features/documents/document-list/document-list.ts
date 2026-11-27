@@ -7,11 +7,36 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
 import { DocumentSummary } from '../../../core/models';
 import { WorkspaceService } from '../../../core/workspace.service';
 import { EmptyState } from '../../../shared/empty-state/empty-state';
 import { LoadingSpinner } from '../../../shared/loading-spinner/loading-spinner';
+
+/** Categories the classifier suggests and a reviewer can confirm. */
+export const DOCUMENT_CATEGORIES = [
+  'Receipt',
+  'Invoice',
+  'Contract',
+  'BankStatement',
+  'Letter',
+  'Other',
+] as const;
+
+/** Display label for a stored category value. */
+export function categoryLabel(category: string | null | undefined): string {
+  switch (category) {
+    case 'BankStatement':
+      return 'Bank Statement';
+    case null:
+    case undefined:
+    case '':
+      return '—';
+    default:
+      return category;
+  }
+}
 
 /**
  * Document list for the selected workspace, with upload, download, OCR
@@ -29,6 +54,7 @@ export class DocumentList {
   private readonly api = inject(ApiService);
   protected readonly workspaceService = inject(WorkspaceService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly documents = signal<DocumentSummary[]>([]);
   protected readonly loading = signal(false);
@@ -42,6 +68,15 @@ export class DocumentList {
   /** Phase 3: document whose OCR details panel is open. */
   protected readonly expandedId = signal<string | null>(null);
   protected readonly reprocessingId = signal<string | null>(null);
+  /** Phase 3 classification: show only the human-review queue (from ?review=true). */
+  protected readonly reviewOnly = signal(false);
+  /** Phase 3 classification: document whose category is being confirmed. */
+  protected readonly confirmingId = signal<string | null>(null);
+  protected readonly confirmError = signal<string | null>(null);
+  /** Reviewer's chosen category per document id (defaults to the suggestion). */
+  protected readonly chosenCategory: Record<string, string> = {};
+  protected readonly categories = DOCUMENT_CATEGORIES;
+  protected readonly categoryLabel = categoryLabel;
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,6 +84,9 @@ export class DocumentList {
   private readonly maxPolls = 24; // ~2 minutes at 5s, then the row stays as-is
 
   constructor() {
+    this.reviewOnly.set(
+      this.route.snapshot.queryParamMap.get('review') === 'true',
+    );
     effect(() => {
       const workspaceId = this.workspaceService.selectedWorkspaceId();
       if (workspaceId) {
@@ -95,6 +133,55 @@ export class DocumentList {
     return doc.ocrConfidence == null
       ? null
       : `${doc.ocrConfidence.toFixed(1)}%`;
+  }
+
+  /** Classification confidence as a whole percent, or null when unclassified. */
+  protected classificationLabel(doc: DocumentSummary): string | null {
+    return doc.classificationConfidence == null
+      ? null
+      : `${Math.round(doc.classificationConfidence)}%`;
+  }
+
+  /** The category to show: a human-confirmed one wins over the suggestion. */
+  protected effectiveCategory(doc: DocumentSummary): string | null {
+    return doc.confirmedCategory ?? doc.suggestedCategory ?? null;
+  }
+
+  /** Phase 3 classification: show only the human-review queue, or all documents. */
+  protected toggleReviewOnly(): void {
+    this.reviewOnly.set(!this.reviewOnly());
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (workspaceId) this.load(workspaceId);
+  }
+
+  /** Phase 3 classification: confirm or correct a document's category. */
+  protected confirmCategory(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.confirmingId()) return;
+    const category =
+      this.chosenCategory[doc.id] ??
+      this.effectiveCategory(doc) ??
+      'Other';
+    this.confirmingId.set(doc.id);
+    this.confirmError.set(null);
+    this.api.confirmCategory(workspaceId, doc.id, category).subscribe({
+      next: (updated) => {
+        this.confirmingId.set(null);
+        this.documents.set(
+          this.documents().map((d) => (d.id === doc.id ? updated : d)),
+        );
+      },
+      error: () => {
+        this.confirmingId.set(null);
+        this.confirmError.set(
+          'Could not save the category. Please try again.',
+        );
+      },
+    });
+  }
+
+  protected onCategoryChosen(doc: DocumentSummary, event: Event): void {
+    this.chosenCategory[doc.id] = (event.target as HTMLSelectElement).value;
   }
 
   /** Phase 3: search the workspace's documents (file name, vendor, OCR text). */
@@ -212,7 +299,9 @@ export class DocumentList {
       this.pollCount = 0;
     }
     this.error.set(null);
-    this.api.getDocuments(workspaceId, this.searchTerm()).subscribe({
+    this.api
+      .getDocuments(workspaceId, this.searchTerm(), this.reviewOnly() || undefined)
+      .subscribe({
       next: (docs) => {
         this.documents.set(docs);
         this.loading.set(false);
