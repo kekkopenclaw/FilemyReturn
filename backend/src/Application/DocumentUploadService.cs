@@ -66,6 +66,13 @@ public class DocumentUploadService
 
         var mimeType = FileValidation.DetectMimeType(bytes.Take(FileValidation.SignatureLength).ToArray())
             ?? throw new ValidationException("File type is not allowed. Allowed types: PDF, PNG, JPEG, GIF, TIFF, BMP, WebP.");
+
+        // SECURITY: the magic bytes say what the file IS; the extension must agree with that.
+        // A script or executable renamed to .pdf (or a PDF renamed to .png) is rejected here,
+        // so a stored file can never be served to a browser under a misleading name.
+        var extension = Path.GetExtension(originalFileName).TrimStart('.').ToLowerInvariant();
+        if (!string.IsNullOrEmpty(extension) && !FileValidation.ExtensionMatchesMime(extension, mimeType))
+            throw new ValidationException($"File extension '.{extension}' does not match the file contents ({mimeType}).");
         var sha256 = Convert.ToHexString(SHA256.HashData(bytes));
 
         var duplicate = await _documents.GetByHashAsync(workspaceId, sha256, ct);
@@ -86,7 +93,18 @@ public class DocumentUploadService
             OcrStatus = OcrStatus.Queued,
             CreatedById = userId
         };
-        await _documents.AddAsync(document, ct);
+        try
+        {
+            await _documents.AddAsync(document, ct);
+        }
+        catch (DuplicateDocumentException)
+        {
+            // RACE: the unique index rejected this insert because an identical upload landed
+            // first (the repository translated the constraint failure into a 409). Remove the
+            // orphaned stored file so duplicate bytes never linger on disk, then answer 409.
+            try { await _storage.DeleteAsync(storageKey, ct); } catch { /* best-effort cleanup */ }
+            throw;
+        }
         await _audit.LogAsync(userId, workspaceId, "Document.Uploaded", "Document", document.Id.ToString(),
             $"{document.OriginalFileName} ({document.FileSizeBytes} bytes, {mimeType})", ct);
         // Phase 3: the upload queues OCR. The Queued status in the database is the durable
