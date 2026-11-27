@@ -11,6 +11,18 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
   </ItemGroup>
 
+  <!-- Phase 3: the WebApi references this project so the OCR worker runs in-process
+       on the single-container Render deploy. Both projects ship an appsettings.json
+       and appsettings.Development.json, and dotnet publish refuses duplicate output
+       paths (NETSDK1152) — the two files are NOT identical (WebApi carries Jwt /
+       Frontend / AllowedHosts), so they must not both publish. The Worker host is
+       never deployed standalone, so its config files are excluded from publish
+       output entirely; the WebApi's files are the ones that land in the image. -->
+  <ItemGroup>
+    <Content Update="appsettings.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Application\DocuArchive.Application.csproj" />
     <ProjectReference Include="..\Domain\DocuArchive.Domain.csproj" />
