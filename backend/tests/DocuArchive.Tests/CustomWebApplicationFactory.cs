@@ -32,6 +32,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Storage:RootPath"] = _storagePath,
                 // Test-only JWT key: Program.cs refuses to start outside Development with
                 // the DEV_ONLY placeholder, so tests must supply a real (test-only) key.
+                // LOCAL RUNS: if you set Jwt__Key in your shell, it MUST be this exact
+                // value. Program.cs reads the key eagerly for token validation while
+                // JwtService binds it lazily for signing, so a different env key means
+                // tokens are signed with this key but validated against yours — and every
+                // authenticated test then fails with 401 (verified 2026-11-27: 23 of 49
+                // failed with a mismatched key, 49/49 passed with this exact value).
                 ["Jwt:Key"] = "TestOnlyJwtKeyForIntegrationTests0123456789abcdef",
                 // The in-process OCR worker polls every 10s in production; in tests the
                 // poll is effectively disabled so tests drive processing explicitly via
