@@ -33,6 +33,7 @@
           when you search.
         </p>
         <p class="hero-ctas">
+          <button class="btn btn-accent btn-large" type="button" (click)="watchScan()">Watch it scan a receipt</button>
           <a class="btn btn-primary btn-large" routerLink="/register">Get started — it&rsquo;s free</a>
           <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
         </p>
@@ -44,22 +45,23 @@
       <figure class="scan-demo" id="demo" #demo aria-labelledby="demo-heading">
         <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
         <div class="demo-stage" [class.is-scanning]="scanning()" [class.is-done]="done()">
-          <div class="receipt" aria-hidden="true">
-            <p class="receipt-shop">TESCO</p>
-            <p class="receipt-branch">Tesco Superstore · London</p>
-            <p class="receipt-date">24 November 2026</p>
-            <ul class="receipt-items">
-              <li><span>Semi-Skimmed Milk 2L</span><span>&pound;1.20</span></li>
-              <li><span>Wholemeal Bread 800g</span><span>&pound;1.10</span></li>
-              <li><span>Bananas 5pk</span><span>&pound;0.95</span></li>
-              <li><span>Chicken Breast 600g</span><span>&pound;4.50</span></li>
-              <li><span>Coffee Beans 200g</span><span>&pound;5.25</span></li>
-              <li><span>Gala Apples 4pk</span><span>&pound;1.85</span></li>
-            </ul>
-            <p class="receipt-total"><span>Total</span><span>&pound;14.85</span></p>
-            <div class="scan-line" aria-hidden="true"></div>
+          <div class="receipt-card">
+            <div class="receipt" aria-hidden="true">
+              <p class="receipt-shop">TESCO</p>
+              <p class="receipt-branch">Tesco Superstore · London</p>
+              <p class="receipt-date">24 November 2026</p>
+              <ul class="receipt-items">
+                <li><span>Semi-Skimmed Milk 2L</span><span>&pound;1.20</span></li>
+                <li><span>Wholemeal Bread 800g</span><span>&pound;1.10</span></li>
+                <li><span>Bananas 5pk</span><span>&pound;0.95</span></li>
+                <li><span>Chicken Breast 600g</span><span>&pound;4.50</span></li>
+                <li><span>Coffee Beans 200g</span><span>&pound;5.25</span></li>
+                <li><span>Gala Apples 4pk</span><span>&pound;1.85</span></li>
+              </ul>
+              <p class="receipt-total"><span>Total</span><span>&pound;14.85</span></p>
+              <div class="scan-line" aria-hidden="true"></div>
+            </div>
           </div>
-          <div class="demo-divider" aria-hidden="true"></div>
           <div class="demo-extracted">
             <p class="demo-status" role="status">{{ status() }}</p>
             <dl class="extracted">
