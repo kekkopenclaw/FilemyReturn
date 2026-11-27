@@ -14,6 +14,11 @@ export interface User {
 
 export interface AuthResponse {
   accessToken: string;
+  /**
+   * Always empty for the browser flow: the refresh token is delivered as
+   * the `docuarchive.refresh` HttpOnly cookie, never in a response body.
+   * The field stays in the contract for non-browser API clients.
+   */
   refreshToken: string;
   accessTokenExpiresAt: string;
   user: User;

@@ -98,7 +98,12 @@ test.describe('filing rules', () => {
     // A rule with no condition is refused by the form.
     await page.getByLabel('Rule name').fill('No condition');
     await page.getByRole('button', { name: 'Create rule' }).click();
-    await expect(page.getByText('at least one condition')).toBeVisible();
+    // Scoped to the error banner: the bare text also matches the form's
+    // "at least one condition" legend, which would pass even when no error
+    // is shown (and strict-mode-fails once the banner does appear).
+    await expect(
+      page.locator('.error-banner', { hasText: 'at least one condition' }),
+    ).toBeVisible();
 
     // Apply the rules from the document row: the tag chip lands on the row.
     await page.goto('/documents');

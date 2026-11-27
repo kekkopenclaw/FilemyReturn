@@ -1,18 +1,29 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { catchError, Observable, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthResponse, ChangePasswordRequest, RegisterResponse, User } from './models';
 
-const REFRESH_TOKEN_KEY = 'docdigit.refreshToken';
+/**
+ * Legacy localStorage key from before the refresh token moved to an
+ * HttpOnly cookie — removed on startup so no stale token lingers in
+ * storage for users upgrading from the old flow.
+ */
+const LEGACY_REFRESH_TOKEN_KEY = 'docdigit.refreshToken';
 
 /**
  * Authentication state.
  *
  * The access token lives in memory only (never persisted) so it cannot be
- * read back from storage by another script. Only the refresh token is kept
- * in localStorage, and it is revoked server-side on logout.
+ * read back from storage by another script. The refresh token lives in an
+ * HttpOnly cookie set by the API (`docuarchive.refresh`) — JavaScript
+ * cannot read it at all, so an injected script cannot steal the long-lived
+ * token. Refresh and logout therefore send an empty body and rely on the
+ * browser attaching the cookie (the interceptor sets withCredentials).
+ * Whether a cookie exists is something only the server knows, so the
+ * guards and the interceptor simply attempt a refresh and treat a 401 as
+ * "not signed in".
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -21,8 +32,6 @@ export class AuthService {
   private readonly baseUrl = environment.apiUrl;
 
   private accessToken: string | null = null;
-  private refreshTokenValue: string | null =
-    localStorage.getItem(REFRESH_TOKEN_KEY);
 
   /** Currently signed-in user, null when signed out. */
   readonly currentUser = signal<User | null>(null);
@@ -30,12 +39,14 @@ export class AuthService {
   /** True once a session has been established (login or token refresh). */
   readonly isAuthenticated = signal(false);
 
-  getAccessToken(): string | null {
-    return this.accessToken;
+  constructor() {
+    // One-time cleanup for the pre-cookie flow: a refresh token left in
+    // localStorage by an older build must not survive the upgrade.
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
   }
 
-  hasRefreshToken(): boolean {
-    return this.refreshTokenValue !== null;
+  getAccessToken(): string | null {
+    return this.accessToken;
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
@@ -79,17 +90,13 @@ export class AuthService {
   }
 
   /**
-   * Exchange the stored refresh token for a new access token, then reload
-   * the current user. Emits an error when there is no usable refresh token.
+   * Exchange the HttpOnly refresh cookie for a new access token, then reload
+   * the current user. Emits an error when there is no usable cookie (the
+   * server answers 401) — the caller treats that as "not signed in".
    */
   refresh(): Observable<User> {
-    if (!this.refreshTokenValue) {
-      return throwError(() => new Error('No refresh token available'));
-    }
     return this.http
-      .post<AuthResponse>(`${this.baseUrl}/auth/refresh`, {
-        refreshToken: this.refreshTokenValue,
-      })
+      .post<AuthResponse>(`${this.baseUrl}/auth/refresh`, {})
       .pipe(
         tap((res) => this.storeSession(res)),
         switchMap(() => this.me()),
@@ -104,14 +111,11 @@ export class AuthService {
 
   /** Best-effort server-side logout, then clear the local session. */
   logout(): void {
-    const token = this.refreshTokenValue;
     this.clearSession();
-    if (token) {
-      this.http
-        .post(`${this.baseUrl}/auth/logout`, { refreshToken: token })
-        .pipe(catchError(() => of(null)))
-        .subscribe();
-    }
+    this.http
+      .post(`${this.baseUrl}/auth/logout`, {})
+      .pipe(catchError(() => of(null)))
+      .subscribe();
     void this.router.navigate(['/login']);
   }
 
@@ -122,17 +126,15 @@ export class AuthService {
   }
 
   private storeSession(res: AuthResponse): void {
+    // The refresh token is NOT in the body any more (cookie only) — only
+    // the short-lived access token is kept, in memory.
     this.accessToken = res.accessToken;
-    this.refreshTokenValue = res.refreshToken;
-    localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
     this.currentUser.set(res.user);
     this.isAuthenticated.set(true);
   }
 
   private clearSession(): void {
     this.accessToken = null;
-    this.refreshTokenValue = null;
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
   }

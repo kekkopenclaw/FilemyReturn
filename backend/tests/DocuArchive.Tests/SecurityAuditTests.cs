@@ -57,13 +57,13 @@ public class SecurityAuditTests : IClassFixture<CustomWebApplicationFactory>
         // Rotate once: old token is now revoked, new token is the live one.
         var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new { RefreshToken = session.RefreshToken });
         refreshed.EnsureSuccessStatusCode();
-        var body = await refreshed.Content.ReadFromJsonAsync<AuthBody>() ?? throw new InvalidOperationException("Empty refresh response.");
+        var liveToken = TestHelpers.RefreshCookieValue(refreshed);
 
         // Replaying the revoked token must fail AND kill the whole family (theft response).
         var reuse = await client.PostAsJsonAsync("/api/auth/refresh", new { RefreshToken = session.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, reuse.StatusCode);
         // The live rotated token must now be dead too — otherwise the stolen family survives.
-        var liveAfterReuse = await client.PostAsJsonAsync("/api/auth/refresh", new { RefreshToken = body.RefreshToken });
+        var liveAfterReuse = await client.PostAsJsonAsync("/api/auth/refresh", new { RefreshToken = liveToken });
         Assert.Equal(HttpStatusCode.Unauthorized, liveAfterReuse.StatusCode);
         // One audit row per reuse presentation (the first replay, then the rotated token
         // presented after the family was killed): both are distinct reuse attempts.

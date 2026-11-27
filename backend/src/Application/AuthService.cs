@@ -85,6 +85,7 @@ public class AuthService
     /// </summary>
     public async Task<AuthResponse> RefreshAsync(RefreshRequest request, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken)) throw new UnauthorizedException("Invalid or expired refresh token.");
         var stored = await _refreshTokens.GetByHashAsync(_jwt.HashToken(request.RefreshToken), ct);
         if (stored is null) throw new UnauthorizedException("Invalid or expired refresh token.");
         if (!stored.IsActive)
@@ -105,9 +106,10 @@ public class AuthService
         return await IssueTokensAsync(user, ct);
     }
 
-    /// <summary>Revokes a refresh token (logout). Unknown tokens are ignored (idempotent).</summary>
+    /// <summary>Revokes a refresh token (logout). Unknown tokens are ignored (idempotent); no token is a no-op.</summary>
     public async Task LogoutAsync(LogoutRequest request, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken)) return;
         var stored = await _refreshTokens.GetByHashAsync(_jwt.HashToken(request.RefreshToken), ct);
         if (stored is not null && stored.IsActive) await _refreshTokens.RevokeAsync(stored, ct);
     }

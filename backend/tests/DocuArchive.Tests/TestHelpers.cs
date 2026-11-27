@@ -15,6 +15,26 @@ public static class TestHelpers
 
     public record AuthSession(string Email, string UserId, string AccessToken, string RefreshToken);
 
+    /// <summary>
+    /// The refresh token from a login/refresh response's Set-Cookie header
+    /// (cookie <c>docuarchive.refresh</c>). The token is never in the body.
+    /// </summary>
+    public static string RefreshCookieValue(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("Set-Cookie", out var values))
+            throw new InvalidOperationException("No Set-Cookie header on the response.");
+        foreach (var value in values)
+        {
+            const string prefix = "docuarchive.refresh=";
+            if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var token = value[prefix.Length..].Split(';')[0].Trim();
+                if (!string.IsNullOrWhiteSpace(token)) return token;
+            }
+        }
+        throw new InvalidOperationException("No docuarchive.refresh cookie on the response.");
+    }
+
     public static async Task<AuthSession> RegisterAndLoginAsync(HttpClient client, string email, string? password = null)
     {
         var register = await client.PostAsJsonAsync("/api/auth/register",
@@ -24,7 +44,8 @@ public static class TestHelpers
             new { Email = email, Password = password ?? Password });
         login.EnsureSuccessStatusCode();
         var body = await login.Content.ReadFromJsonAsync<AuthBody>() ?? throw new InvalidOperationException("Empty login response.");
-        return new AuthSession(email, body.User.Id, body.AccessToken, body.RefreshToken);
+        // The refresh token travels by HttpOnly cookie only — the body field is empty.
+        return new AuthSession(email, body.User.Id, body.AccessToken, RefreshCookieValue(login));
     }
 
     public static HttpClient Authed(HttpClient client, string token)

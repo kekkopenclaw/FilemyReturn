@@ -27,6 +27,12 @@ test.describe('auth', () => {
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+    // Reload: the in-memory access token is gone, so the guard must
+    // silently refresh from the HttpOnly cookie and keep the user signed in.
+    await page.reload();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   });
 
   test('wrong password shows an error and stays on login', async ({ page }) => {

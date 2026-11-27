@@ -15,9 +15,16 @@ public record LoginRequest(
     [Required, EmailAddress] string Email,
     [Required] string Password);
 
-public record RefreshRequest([Required] string RefreshToken);
+/// <summary>
+/// Refresh-token request. The token usually travels in the
+/// <c>docuarchive.refresh</c> HttpOnly cookie (see AuthController); the body
+/// field is a fallback for non-browser API clients that hold a token. Either
+/// way, the token is never returned in a response body.
+/// </summary>
+public record RefreshRequest(string? RefreshToken);
 
-public record LogoutRequest([Required] string RefreshToken);
+/// <summary>Logout request — same cookie-or-body token as <see cref="RefreshRequest"/>.</summary>
+public record LogoutRequest(string? RefreshToken);
 
 public record ChangePasswordRequest(
     string? Email,

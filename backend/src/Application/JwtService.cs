@@ -50,7 +50,15 @@ public class JwtService : IJwtService
     }
 
     /// <inheritdoc/>
-    public string CreateRefreshToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+    /// <summary>
+    /// Generates a new opaque refresh token (plaintext — only its hash is stored).
+    /// Base64url (RFC 4648 §5: no <c>+</c>, <c>/</c> or <c>=</c> padding) so the
+    /// token can travel in an HttpOnly cookie verbatim — plain base64 would be
+    /// percent-encoded by <c>Response.Cookies.Append</c> (<c>/</c> → <c>%2F</c>)
+    /// and the encoded form would no longer match the stored hash.
+    /// </summary>
+    public string CreateRefreshToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
+        .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
     /// <inheritdoc/>
     public string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));

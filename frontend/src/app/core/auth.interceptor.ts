@@ -24,18 +24,22 @@ function isChangePassword(req: HttpRequest<unknown>): boolean {
 }
 
 /**
- * Adds the in-memory Bearer token to API calls. On a 401, tries one token
- * refresh and replays the original request; if the refresh fails, the
- * session is cleared and the user is sent to /login.
+ * Adds the in-memory Bearer token to API calls, and sends cookies with
+ * every API request (the refresh token lives in an HttpOnly cookie — the
+ * browser only attaches it when withCredentials is set, including in dev
+ * where the app runs on localhost:4200 against the API on localhost:5000).
+ * On a 401, tries one token refresh and replays the original request; if
+ * the refresh fails, the session is cleared and the user is sent to /login.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
+  const withCreds = req.clone({ withCredentials: true });
   const token = auth.getAccessToken();
   const authedReq =
     token && !isAuthEndpoint(req)
-      ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-      : req;
+      ? withCreds.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+      : withCreds;
 
   return next(authedReq).pipe(
     catchError((err: unknown) => {
@@ -49,10 +53,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           switchMap(() => {
             const newToken = auth.getAccessToken();
             const retryReq = newToken
-              ? req.clone({
+              ? withCreds.clone({
                   setHeaders: { Authorization: `Bearer ${newToken}` },
                 })
-              : req;
+              : withCreds;
             return next(retryReq);
           }),
           catchError((refreshErr: unknown) => {
