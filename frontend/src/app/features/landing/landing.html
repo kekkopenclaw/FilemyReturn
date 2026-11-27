@@ -40,12 +40,12 @@
             <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
           </p>
           <p>No card required. Your documents stay on your own server.</p>
-          <p class="shoebox" #shoebox><b>{{ shoeboxes() }}</b> shoeboxes of paper</p>
+          <p class="shoebox" #shoebox><b>{{ shoeboxes() }}</b><span> shoeboxes of paper</span></p>
         </div>
 
         <div class="col-lg-6">
           <figure class="s-scene" id="demo" #demo aria-labelledby="demo-heading">
-            <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
+            <figcaption id="demo-heading" class="demo-title">Watch me scan<span class="pill-label"> Interactive preview — sample data</span></figcaption>
             <div class="demo-grid">
               <div
                 class="scene"
@@ -94,11 +94,16 @@
                   aria-label="Extracted from the receipt"
                   [style.transform]="'rotateX(' + (rx() * 0.3) + 'deg) rotateY(' + (ry() * 0.3) + 'deg)'"
                 >
-                  <span class="chip chip-a" [class.revealed]="revealed() >= 1"><span class="chip-label">Vendor</span><span class="chip-value">Tesco Extra</span></span>
-                  <span class="chip chip-b" [class.revealed]="revealed() >= 2"><span class="chip-label">Date</span><span class="chip-value">24 Nov 2026 · 18:42</span></span>
-                  <span class="chip chip-c" [class.revealed]="revealed() >= 3"><span class="chip-label">Total</span><span class="chip-value">&pound;47.82</span></span>
-                  <span class="chip chip-d" [class.revealed]="revealed() >= 5"><span class="chip-label">Category</span><span class="chip-value">Groceries</span></span>
-                  <span class="chip chip-e" [class.revealed]="revealed() >= 4"><span class="chip-label">Confidence</span><span class="chip-value">95.7%</span><span class="chip-bar" aria-hidden="true"><span [style.width.%]="(revealed() / 6) * 95.7"></span></span></span>
+                  <!-- Chips use chipsRevealed, not revealed: once a field
+                       is read, its chip stays visible through every loop
+                       replay instead of vanishing for most of the cycle.
+                       The Date chip shows the short date — the full
+                       date+time lives in the extraction panel beside it. -->
+                  <span class="chip chip-a" [class.revealed]="chipsRevealed() >= 1"><span class="chip-label">Vendor</span><span class="chip-value">Tesco Extra</span></span>
+                  <span class="chip chip-b" [class.revealed]="chipsRevealed() >= 2"><span class="chip-label">Date</span><span class="chip-value">24 Nov 2026</span></span>
+                  <span class="chip chip-c" [class.revealed]="chipsRevealed() >= 3"><span class="chip-label">Total</span><span class="chip-value">&pound;47.82</span></span>
+                  <span class="chip chip-d" [class.revealed]="chipsRevealed() >= 5"><span class="chip-label">Category</span><span class="chip-value">Groceries</span></span>
+                  <span class="chip chip-e" [class.revealed]="chipsRevealed() >= 4"><span class="chip-label">Confidence</span><span class="chip-value">95.7%</span><span class="chip-bar" aria-hidden="true"><span [style.width.%]="(chipsRevealed() / 6) * 95.7"></span></span></span>
                 </div>
               </div>
 
@@ -146,16 +151,12 @@
               </div>
             </div>
             <div class="pill-row">
+              <!-- One replay button only (in the extraction panel above):
+                   a second "Reading…" button here was redundant while the
+                   scan runs. The filed pill stays. -->
               @if (done()) {
                 <span class="filed-pill">Filed to archive &#10003;</span>
               }
-              <button class="btn btn-accent" type="button" (click)="scan()" [disabled]="scanning()">
-                @if (scanning()) {
-                  Reading…
-                } @else {
-                  Scan again
-                }
-              </button>
             </div>
             <div
               class="hud"
@@ -356,7 +357,10 @@
               @if (expense.claimable) {
                 <span class="badge badge-success">Claimable</span>
               } @else {
-                <span class="badge">Personal</span>
+                <!-- Plain .badge inherits Bootstrap's white text on a
+                     near-white pill — invisible. badge-neutral sets dark
+                     text explicitly, so "Personal" actually reads. -->
+                <span class="badge badge-neutral">Personal</span>
               }
             </li>
           }
@@ -398,7 +402,7 @@
   <!-- Final call to action -->
   <section class="cta-band" aria-labelledby="cta-heading">
     <div class="container">
-      <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
+      <h2 id="cta-heading">Start filing in<span class="hero-accent"> seconds.</span></h2>
       <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
       <p>
         <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>

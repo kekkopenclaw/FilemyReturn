@@ -48,6 +48,15 @@ export class Landing implements AfterViewInit, OnDestroy {
   protected readonly scanning = signal(false);
   protected readonly done = signal(false);
   protected readonly revealed = signal(0);
+  /**
+   * The chips' reveal state — unlike `revealed`, this NEVER resets. The
+   * scan loop re-reads the fields one by one each cycle (the extraction
+   * panel replays the reading), but the chips, once read, stay visible:
+   * resetting them made them vanish for most of the ~30s cycle and only
+   * flash at the end. A chip is revealed the first time its field is
+   * read and stays revealed forever after.
+   */
+  protected readonly chipsRevealed = signal(0);
   protected readonly status = signal(
     'Press "Scan this receipt" — the software reads the receipt live.',
   );
@@ -168,12 +177,15 @@ export class Landing implements AfterViewInit, OnDestroy {
     }
     const showcaseEl = this.showcase()?.nativeElement;
     if (showcaseEl) {
+      // The captions run on a free cycle from page load, in step with the
+      // 12.68s video (5 phases × 2.54s) — they must not stall on step 1
+      // while the video plays on. Starting on init (not only on scroll)
+      // keeps them in sync with the video, which autoplays from load.
+      this.startShowcase();
       const o = new IntersectionObserver(
         (entries) => {
           if (entries.some((e) => e.isIntersecting)) {
             this.startShowcase();
-          } else {
-            this.stopShowcase();
           }
         },
         { threshold: 0.2 },
@@ -247,19 +259,29 @@ export class Landing implements AfterViewInit, OnDestroy {
     // The scan must make it clear the software is READING: each field is
     // announced as it is read off the receipt, in order, ending with the
     // category and the filing — then the receipt is filed automatically.
+    // reveal() moves both the panel (which replays every loop) and the
+    // chips (which persist once read — see chipsRevealed).
     this.later(1200, () => this.status.set('Reading — shop found: Tesco Extra.'));
-    this.later(1400, () => this.revealed.set(1));
+    this.later(1400, () => this.reveal(1));
     this.later(1800, () => this.status.set('Reading — date found: 24 Nov 2026, 18:42.'));
-    this.later(2000, () => this.revealed.set(2));
+    this.later(2000, () => this.reveal(2));
     this.later(2400, () => this.status.set('Reading — total found: £47.82.'));
-    this.later(2600, () => this.revealed.set(3));
+    this.later(2600, () => this.reveal(3));
     this.later(3000, () => this.status.set('Reading — VAT found: £4.18.'));
-    this.later(3200, () => this.revealed.set(4));
+    this.later(3200, () => this.reveal(4));
     this.later(3600, () => this.status.set('Reading — category: Groceries.'));
-    this.later(3800, () => this.revealed.set(5));
+    this.later(3800, () => this.reveal(5));
     this.later(4200, () => this.status.set('Reading — filed to Expenses / Nov 2026 / Groceries.'));
-    this.later(4400, () => this.revealed.set(6));
+    this.later(4400, () => this.reveal(6));
     this.later(4800, () => this.finish());
+  }
+
+  /** Reveals field n in the extraction panel AND, the first time, its chip. The panel resets every loop; the chips never do. */
+  private reveal(n: number): void {
+    this.revealed.set(n);
+    if (this.chipsRevealed() < n) {
+      this.chipsRevealed.set(n);
+    }
   }
 
   /** Mouse parallax on the 3D scene — skipped with reduced motion. */
@@ -335,6 +357,7 @@ export class Landing implements AfterViewInit, OnDestroy {
 
   private finish(): void {
     this.revealed.set(6);
+    this.chipsRevealed.set(6);
     this.scanning.set(false);
     this.done.set(true);
     this.status.set('Done. Filed and searchable — try searching "Tesco" in the dashboard below.');
@@ -372,16 +395,13 @@ export class Landing implements AfterViewInit, OnDestroy {
         if (!this.showcaseRunning()) {
           return;
         }
+        // One step per 2.54s: the five captions take exactly 12.68s, the
+        // length of the showcase video, so the words stay in step with
+        // the pictures instead of drifting apart.
         this.showcasePhase.set((this.showcasePhase() + 1) % 5);
         this.advanceShowcase();
-      }, 1900),
+      }, 2540),
     );
-  }
-
-  private stopShowcase(): void {
-    this.showcaseRunning.set(false);
-    this.showcaseTimers.forEach((t) => clearTimeout(t));
-    this.showcaseTimers = [];
   }
 
   private reducedMotion(): boolean {

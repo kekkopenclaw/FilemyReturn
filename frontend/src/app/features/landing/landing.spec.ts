@@ -15,6 +15,7 @@ describe('Landing', () => {
     scanning: () => boolean;
     done: () => boolean;
     revealed: () => number;
+    chipsRevealed: () => number;
     status: () => string;
     rx: () => number;
     ry: () => number;
@@ -131,12 +132,34 @@ describe('Landing', () => {
     });
   });
 
+  it('chips stay revealed across the loop — the panel replays, the chips do not vanish', () => {
+    return create().then((landing) => {
+      landing.scan();
+      vi.advanceTimersByTime(4800);
+      expect(landing.done()).toBe(true);
+      expect(landing.chipsRevealed()).toBe(6);
+
+      // The loop restarts the scan: the panel resets to unread…
+      vi.advanceTimersByTime(4500);
+      expect(landing.scanning()).toBe(true);
+      expect(landing.revealed()).toBe(0);
+      // …but the chips stay visible the whole cycle.
+      expect(landing.chipsRevealed()).toBe(6);
+
+      // And after the replay finishes, still 6.
+      vi.advanceTimersByTime(4800);
+      expect(landing.done()).toBe(true);
+      expect(landing.chipsRevealed()).toBe(6);
+    });
+  });
+
   it('with reduced motion shows the filed state once and never loops', () => {
     mockMatchMedia(true);
     return create().then((landing) => {
       landing.scan();
       expect(landing.done()).toBe(true);
       expect(landing.revealed()).toBe(6);
+      expect(landing.chipsRevealed()).toBe(6);
       expect(landing.scanning()).toBe(false);
 
       vi.advanceTimersByTime(60_000);

@@ -89,8 +89,37 @@ test.describe('landing page', () => {
     await expect(page.locator('.expense-strip').getByText('Claimable')).toHaveCount(2);
     await expect(page.getByText('check with your accountant')).toBeVisible();
 
-    // The glued text is fixed with real spaces in the templates.
+    // The "Personal" flags must actually READ: plain .badge inherited
+    // Bootstrap's white text on a near-white pill (invisible at 2×
+    // zoom). badge-neutral sets dark text — check the contrast, not
+    // just that the element exists.
+    const personal = page.locator('.expense-strip', { hasText: 'Personal' }).getByText('Personal').first();
+    const contrast = await personal.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const lum = (rgb: string): number => {
+        const [r, g, b] = rgb.match(/\d+(\.\d+)?/g)!.slice(0, 3).map(Number).map((v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const l1 = lum(cs.color);
+      const l2 = lum(cs.backgroundColor);
+      const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+      return (hi + 0.05) / (lo + 0.05);
+    });
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+
+    // The glued text is fixed with real spaces in the templates — the
+    // space sits INSIDE the span, so even a naive text extraction that
+    // drops whitespace between elements reads it correctly.
     await expect(page.getByRole('heading', { name: 'Start filing in seconds.' })).toBeVisible();
+    const ctaText = await page.locator('#cta-heading').textContent();
+    expect(ctaText).toContain('Start filing in seconds.');
+    expect(ctaText).not.toContain('inseconds');
+    const shoeboxText = await page.locator('.shoebox').textContent();
+    expect(shoeboxText).toContain('shoeboxes of paper');
+    expect(shoeboxText).not.toContain('0shoeboxes');
     const demoTitle = await page.locator('.demo-title').textContent();
     expect(demoTitle).toContain('Watch me scan Interactive preview');
     // No non-breaking space gluing the words together.
@@ -184,12 +213,17 @@ test.describe('landing page', () => {
     expect(boxes.c.y).toBeGreaterThan(boxes.receipt.y + boxes.receipt.h * 0.5);
 
     // The finished state stays alive: the receipt is still bobbing after
-    // the scan completes.
+    // the scan completes. Sample the receipt's position over 2.5s — the
+    // -28px / 4.5s float covers a wide range in that window, so a
+    // >8px range proves it moves (a two-point check can catch the same
+    // phase by luck and read ~0px even while it bobs).
     await expect(page.getByRole('status')).toContainText('Done. Filed and searchable', { timeout: 20_000 });
-    const y1 = await receipt.evaluate((el) => el.getBoundingClientRect().y);
-    await page.waitForTimeout(1500);
-    const y2 = await receipt.evaluate((el) => el.getBoundingClientRect().y);
-    expect(Math.abs(y2 - y1)).toBeGreaterThan(2);
+    const ys: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      ys.push(await receipt.evaluate((el) => el.getBoundingClientRect().y));
+      await page.waitForTimeout(500);
+    }
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(8);
 
     // All five chips are FULLY visible around the receipt — in front of
     // it (not hidden behind), and fully inside the phone viewport (not
@@ -217,6 +251,62 @@ test.describe('landing page', () => {
       expect(chip.inViewport, `${chip.sel} inside the viewport`).toBe(true);
       expect(chip.onTop, `${chip.sel} on top of the receipt`).toBe(true);
     }
+
+    // The chips must not collide with each other: no two chip boxes
+    // overlap (Vendor + Date used to sit on top of each other across
+    // the receipt header).
+    const overlaps = await page.evaluate(() => {
+      const rects = ['.chip-a', '.chip-b', '.chip-c', '.chip-d', '.chip-e'].map((sel) => {
+        const r = (document.querySelector(sel) as HTMLElement).getBoundingClientRect();
+        return { sel, x: r.x, y: r.y, w: r.width, h: r.height };
+      });
+      const bad: string[] = [];
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i];
+          const b = rects[j];
+          const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+          const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+          if (overlapX > 2 && overlapY > 2) bad.push(`${a.sel} overlaps ${b.sel}`);
+        }
+      }
+      return bad;
+    });
+    expect(overlaps).toEqual([]);
+
+    // The chips must not cover the receipt's text: the shop header and
+    // the line items stay readable — whatever is at their centre point
+    // belongs to the receipt, not a chip.
+    const covered = await page.evaluate(() => {
+      const insideReceipt = (el: Element | null): boolean =>
+        !!el && !!el.closest('.receipt');
+      const points: { name: string; el: Element | null }[] = [
+        { name: 'header', el: document.elementFromPoint(
+          (() => { const r = document.querySelector('.r-shop')!.getBoundingClientRect(); return r.x + r.width / 2; })(),
+          (() => { const r = document.querySelector('.r-shop')!.getBoundingClientRect(); return r.y + r.height / 2; })(),
+        ) },
+      ];
+      document.querySelectorAll('.r-items li').forEach((li, i) => {
+        if (i % 2 === 0) {
+          const r = li.getBoundingClientRect();
+          points.push({ name: `item-${i}`, el: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) });
+        }
+      });
+      return points.filter((p) => !insideReceipt(p.el)).map((p) => p.name);
+    });
+    expect(covered).toEqual([]);
+
+    // The chips persist through the loop: once the scan restarts, the
+    // extraction panel re-reads one by one — but the chips must stay
+    // visible the whole cycle, not vanish until the end.
+    const status = page.getByRole('status');
+    await expect(status).toContainText('Reading receipt', { timeout: 15_000 });
+    const chipOpacity = await page.evaluate(() =>
+      ['.chip-a', '.chip-b', '.chip-c', '.chip-d', '.chip-e'].map((sel) =>
+        getComputedStyle(document.querySelector(sel) as HTMLElement).opacity,
+      ),
+    );
+    expect(chipOpacity).toEqual(['1', '1', '1', '1', '1']);
 
     // No horizontal overflow on a phone: nothing is cut off at the edges.
     const overflow = await page.evaluate(

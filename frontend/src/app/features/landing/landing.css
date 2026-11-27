@@ -31,20 +31,22 @@ a:not(.btn){color:#0a5e4e}
 .s-scene{margin:0;scroll-margin-top:5rem}
 .demo-title{font-weight:800;font-size:1.1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .demo-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:1.25rem;align-items:stretch}
-.scene{position:relative;min-height:32rem;perspective:1200px;overflow:hidden;border-radius:18px;background:linear-gradient(180deg,#fff 0%,#f7f8f5 100%);border:1px solid #e3e7e1}
+.scene{position:relative;min-height:38rem;perspective:1200px;overflow:hidden;border-radius:18px;background:linear-gradient(180deg,#fff 0%,#f7f8f5 100%);border:1px solid #e3e7e1}
 .grid-floor{position:absolute;left:-25%;right:-25%;bottom:-4%;height:46%;background-image:linear-gradient(rgba(14,124,102,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(14,124,102,.14) 1px,transparent 1px);background-size:44px 44px;transform:rotateX(62deg) translate(calc(var(--px,0)*24px),calc(var(--py,0)*10px));transform-origin:bottom;mask-image:linear-gradient(to top,#000 30%,transparent 95%)}
 .orbit-wrap{position:absolute;left:50%;top:46%;transform:rotateX(72deg) translate(calc(var(--px,0)*-16px),calc(var(--py,0)*-10px));pointer-events:none}
 .ring-a-wrap{width:26rem;height:26rem;margin:-13rem 0 0 -13rem}
 .ring-b-wrap{width:19rem;height:19rem;margin:-9.5rem 0 0 -9.5rem}
 .orbit-ring{width:100%;height:100%;border:1px solid rgba(14,124,102,.28);border-radius:50%}
 .ring-b{border-color:rgba(14,124,102,.16)}
-.s-receipt{position:relative;z-index:2;width:15.5rem;margin:2.5rem auto 0;transform:rotateX(var(--rx,-8deg)) rotateY(var(--ry,10deg));transition:transform .35s ease}
-.receipt{background:#fff;border:1px solid #e3e7e1;border-top:none;border-bottom:none;border-radius:0;box-shadow:var(--shadow);padding:1.1rem 1rem 1.25rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.8rem;line-height:1.45;position:relative;color:#101a17;animation:float 3.5s ease-in-out infinite}
+.s-receipt{position:relative;z-index:2;width:15.5rem;margin:3.5rem auto 3rem;transform:rotateX(var(--rx,-8deg)) rotateY(var(--ry,10deg));transition:transform .35s ease}
+.receipt{background:#fff;border:1px solid #e3e7e1;border-top:none;border-bottom:none;border-radius:0;box-shadow:var(--shadow);padding:1.1rem 1rem 1.25rem;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.8rem;line-height:1.45;position:relative;color:#101a17;animation:float 4.5s ease-in-out infinite}
 .receipt::before{content:"";position:absolute;left:-1px;right:-1px;top:-9px;height:10px;background:var(--zigzag) repeat-x;background-size:12px 10px;transform:scaleY(-1)}
 .receipt::after{content:"";position:absolute;left:-1px;right:-1px;bottom:-9px;height:10px;background:var(--zigzag) repeat-x;background-size:12px 10px}
 /* The bob has to be unmistakable — a straight translateY is easy to miss
-   between screenshots, so the receipt also rocks a degree each way. */
-@keyframes float{0%,100%{transform:translateY(0) rotate(-.6deg)}50%{transform:translateY(-20px) rotate(.6deg)}}
+   between screenshots, so the receipt also rocks a degree each way.
+   -28px over 4.5s: the movement is visible even in stills taken seconds
+   apart, where the old -20px/3.5s read as "only a few px". */
+@keyframes float{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-28px) rotate(1deg)}}
 .r-shop{font-weight:800;font-size:1.05rem;margin:0;text-align:center;letter-spacing:.06em}
 .r-branch,.r-vat{margin:.15rem 0;text-align:center;color:#6b7a74;font-size:.72rem}
 .r-items{list-style:none;margin:.75rem 0;padding:.6rem 0;border-top:1px dashed #e3e7e1;border-bottom:1px dashed #e3e7e1}
@@ -59,9 +61,18 @@ a:not(.btn){color:#0a5e4e}
 @keyframes sweep{from{top:0}to{top:100%}}
 /* The chips float AROUND the receipt and must stay IN FRONT of it:
    the receipt wrapper is z-index 2, so the chips need z-index 3 —
-   without it the receipt paints over them and only slivers show. */
+   without it the receipt paints over them and only slivers show.
+   GEOMETRY (why these positions): the receipt is centred with clear
+   bands above and below it (margin 3.5rem/3rem in a 38rem scene), so
+   the chips live in those bands — Vendor + Date across the TOP,
+   Total + Confidence + Category across the BOTTOM — instead of down
+   the sides, where they overlapped the header ("TESCO EXTRA") and
+   covered the line items. A chip may touch the receipt's torn edge
+   at a corner, but never its text: the top row sits clear of the
+   header line and the bottom row clear of the barcode. Chips are
+   kept compact so the three-across bottom row fits. */
 .chips{position:absolute;inset:0;pointer-events:none;z-index:3}
-.chip{position:absolute;display:flex;flex-direction:column;gap:.05rem;background:#fff;border:1px solid #e3e7e1;border-radius:99px;box-shadow:var(--shadow);padding:.45rem .9rem;opacity:0;transform:translateY(10px) scale(.92);transition:.45s ease;pointer-events:auto;cursor:default;max-width:46%}
+.chip{position:absolute;display:flex;flex-direction:column;gap:.05rem;background:#fff;border:1px solid #e3e7e1;border-radius:99px;box-shadow:var(--shadow);padding:.4rem .75rem;opacity:0;transform:translateY(10px) scale(.92);transition:.45s ease;pointer-events:auto;cursor:default;max-width:44%}
 .chip.revealed{opacity:1;transform:translateY(0) scale(1);animation:chipFloat 3s ease-in-out infinite}
 .chip-a.revealed{animation-delay:0s}
 .chip-b.revealed{animation-delay:.5s}
@@ -71,15 +82,19 @@ a:not(.btn){color:#0a5e4e}
 @keyframes chipFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-12px) scale(1)}}
 /* Hover/touch lift: the float animation owns `transform`, so the lift
    uses the independent `translate` property — the two compose. */.chip.revealed:hover,.chip.revealed:active{translate:0 -6px;border-color:#0e7c66;box-shadow:0 16px 32px rgba(16,26,23,.16),0 0 0 3px #e6f4ef}
-.chip-bar{display:block;height:5px;min-width:6.5rem;border-radius:99px;background:#f2f3ef;overflow:hidden;margin-top:.3rem}
+.chip-bar{display:block;height:5px;min-width:5.5rem;border-radius:99px;background:#f2f3ef;overflow:hidden;margin-top:.3rem}
 .chip-bar span{display:block;height:100%;background:linear-gradient(90deg,#0e7c66,#2ec4a0);border-radius:99px;transition:width .5s ease}
-.chip-a{top:10%;left:1%}
-.chip-b{top:8%;right:1%}
-.chip-c{bottom:28%;left:1%}
-.chip-d{top:42%;left:1%}
-.chip-e{bottom:24%;right:1%}
+/* Top row (above the receipt header) and bottom row (below the
+   barcode). Confidence sits centred between Total and Category —
+   centred with margin-left, not translateX, because the float
+   animation owns `transform`. */
+.chip-a{top:2%;left:1%}
+.chip-b{top:2%;right:1%}
+.chip-c{bottom:2%;left:1%}
+.chip-d{bottom:2%;right:1%}
+.chip-e{bottom:2%;left:50%;margin-left:-5.5rem}
 .chip-label{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7a74}
-.chip-value{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:600;font-size:.9rem;color:#101a17}
+.chip-value{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:600;font-size:.85rem;color:#101a17}
 .demo-extracted{display:flex;flex-direction:column;min-width:0;padding:1.25rem 1.5rem;background:#fff;border:1px solid #e3e7e1;border-radius:22px;box-shadow:var(--shadow)}
 .extract-title{font-size:1.05rem;margin:0 0 .5rem}
 .demo-status{margin:0 0 .5rem;min-height:1.5rem;font-size:.9rem;color:#6b7a74}
@@ -161,6 +176,12 @@ a:not(.btn){color:#0a5e4e}
 .doc-empty{padding:1rem 0;color:#6b7a74}
 .expense-strip{background:#fff;border:1px solid #e3e7e1;border-radius:18px;box-shadow:var(--shadow);padding:1.5rem}
 .expense-strip .doc-row:last-child{border-bottom:0}
+/* "Personal" flags: dark ink text on the light pill. The global
+   .badge-neutral muted grey (#6b7a74 on #f7f8f5) only reaches 4.23:1
+   — below WCAG AA 4.5 — which is why the flags were unreadable.
+   Ink text is ~15:1. Scoped to this component: the global badge
+   colours elsewhere are untouched. */
+.expense-strip .badge-neutral{color:#101a17}
 .expense-total{margin:1.25rem 0 .25rem;font-size:1.05rem;color:#3d4a45}
 .expense-total strong{color:#0a5e4e;font-size:1.25rem}
 .expense-note{margin:0;color:#6b7a74;font-size:.9rem}
@@ -170,19 +191,22 @@ a:not(.btn){color:#0a5e4e}
 .cta-band p{color:#c9d4cf;max-width:36rem;margin:0 auto 1.5rem}
 .cta-band .btn{margin:0 .35rem .5rem}
 .c-footer{padding:1.5rem 1rem 2.5rem;text-align:center;color:#6b7a74;font-size:.9rem}
-@media (max-width:61.99rem){.demo-grid{grid-template-columns:1fr}.scene{min-height:29rem}
-/* Mobile keeps the chips FLOATING AROUND the receipt — absolute, smaller,
-   overlapping the receipt edges. Never a static stacked row, and never
-   clipped: every chip sits inside the scene with room to spare. */
+@media (max-width:61.99rem){.demo-grid{grid-template-columns:1fr}.scene{min-height:34rem}
+/* Mobile keeps the chips FLOATING AROUND the receipt — in the clear
+   bands above and below it, same as desktop. Never a static stacked
+   row, and never clipped: every chip sits inside the scene with room
+   to spare. Compact chips so the three-across bottom row fits a
+   390px screen. */
 .chips{position:absolute;inset:0}
-.chip{padding:.35rem .65rem}
-.chip-value{font-size:.75rem;overflow-wrap:anywhere}
-.chip-bar{min-width:4.5rem}
-.chip-a{top:4%;left:1%}
-.chip-b{top:2%;right:1%}
-.chip-c{bottom:20%;left:1%}
-.chip-d{top:36%;left:0}
-.chip-e{bottom:16%;right:1%}
+.chip{padding:.3rem .55rem;max-width:40%}
+.chip-label{font-size:.62rem}
+.chip-value{font-size:.72rem;overflow-wrap:anywhere}
+.chip-bar{min-width:4rem}
+.chip-a{top:1%;left:1%}
+.chip-b{top:1%;right:1%}
+.chip-c{bottom:1%;left:1%}
+.chip-d{bottom:1%;right:1%}
+.chip-e{bottom:1%;left:50%;margin-left:-3.4rem}
 .hero h1{font-size:2.1rem}.stats-grid{grid-template-columns:repeat(3,1fr)}.showcase h2{font-size:1.6rem}.showcase-stage{padding:1.5rem}}
-@media (max-width:48rem){.t-nav{display:none}.c-topbar{gap:.6rem;padding:.6rem .8rem}.b-name{font-size:1.05rem}.t-actions .btn{padding:.4rem .65rem;font-size:.85rem}.hero{padding:2rem 0 3rem}.hero h1{font-size:1.9rem}.scene{min-height:28rem}.s-receipt{width:13.5rem;margin-top:2rem}.receipt{font-size:.75rem;padding:.9rem .8rem 1.1rem}.ring-a-wrap{width:20rem;height:20rem;margin:-10rem 0 0 -10rem}.ring-b-wrap{width:15rem;height:15rem;margin:-7.5rem 0 0 -7.5rem}.section{padding:2.5rem 0}.stats-grid{grid-template-columns:repeat(2,1fr)}.showcase-screen{grid-template-columns:1fr}.showcase-stage{padding:1.25rem}}
+@media (max-width:48rem){.t-nav{display:none}.c-topbar{gap:.6rem;padding:.6rem .8rem}.b-name{font-size:1.05rem}.t-actions .btn{padding:.4rem .65rem;font-size:.85rem}.hero{padding:2rem 0 3rem}.hero h1{font-size:1.9rem}.scene{min-height:34rem}.s-receipt{width:13.5rem;margin:3.5rem auto 3rem}.receipt{font-size:.75rem;padding:.9rem .8rem 1.1rem}.ring-a-wrap{width:20rem;height:20rem;margin:-10rem 0 0 -10rem}.ring-b-wrap{width:15rem;height:15rem;margin:-7.5rem 0 0 -7.5rem}.section{padding:2.5rem 0}.stats-grid{grid-template-columns:repeat(2,1fr)}.showcase-screen{grid-template-columns:1fr}.showcase-stage{padding:1.25rem}}
 @media (prefers-reduced-motion:reduce){.receipt,.scan-line,.chip{animation:none!important}.s-receipt{transform:none!important}.tilt-card,.d-glimpse,.chip,.meter-fill,.extract-progress span,.extracted>div{transition:none!important}.d-glimpse{transform:none}}
