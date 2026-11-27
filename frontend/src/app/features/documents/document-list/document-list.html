@@ -44,7 +44,19 @@
       [disabled]="!workspaceService.selectedWorkspaceId()"
       (input)="onSearchInput($event)"
     />
+    <button
+      type="button"
+      class="btn btn-small"
+      [disabled]="!workspaceService.selectedWorkspaceId()"
+      (click)="toggleReviewOnly()"
+      [attr.aria-pressed]="reviewOnly()"
+    >
+      {{ reviewOnly() ? 'Showing needs review — show all' : 'Needs review only' }}
+    </button>
   </div>
+  @if (confirmError()) {
+    <p class="error-banner" role="alert">{{ confirmError() }}</p>
+  }
 
   @if (loading()) {
     <app-loading-spinner />
@@ -63,6 +75,7 @@
           <tr>
             <th scope="col">File name</th>
             <th scope="col">Type</th>
+            <th scope="col">Category</th>
             <th scope="col">Size</th>
             <th scope="col">Status</th>
             <th scope="col">Uploaded</th>
@@ -74,6 +87,12 @@
             <tr>
               <td class="doc-name">{{ doc.originalFileName }}</td>
               <td>{{ doc.mimeType }}</td>
+              <td>
+                {{ categoryLabel(effectiveCategory(doc)) }}
+                @if (doc.needsReview) {
+                  <span class="badge badge-warning">Needs review</span>
+                }
+              </td>
               <td>{{ formatBytes(doc.fileSizeBytes) }}</td>
               <td><span class="badge {{ statusClass(doc.status) }}">{{ statusLabel(doc.status) }}</span></td>
               <td>{{ doc.createdAt | date: 'medium' }}</td>
@@ -115,7 +134,7 @@
             </tr>
             @if (expandedId() === doc.id) {
               <tr class="doc-details-row">
-                <td colspan="6">
+                <td colspan="7">
                   <div class="doc-details">
                     @if (doc.ocrStatus === 'Queued' || doc.ocrStatus === 'Processing') {
                       <p class="doc-details-empty">Reading the document… this usually takes a few seconds.</p>
@@ -132,13 +151,59 @@
                         @if (doc.extractedTotal != null) {
                           <div><dt>Total</dt><dd>{{ doc.extractedCurrency }}{{ doc.extractedTotal }}</dd></div>
                         }
-                        @if (doc.suggestedCategory) {
-                          <div><dt>Suggested category</dt><dd>{{ doc.suggestedCategory }}</dd></div>
+                        @if (effectiveCategory(doc)) {
+                          <div>
+                            <dt>Category</dt>
+                            <dd>
+                              {{ categoryLabel(effectiveCategory(doc)) }}
+                              @if (doc.confirmedCategory) {
+                                <span class="badge badge-success">Confirmed</span>
+                              } @else {
+                                <span class="badge badge-neutral">Suggested</span>
+                              }
+                            </dd>
+                          </div>
+                        }
+                        @if (classificationLabel(doc)) {
+                          <div><dt>Category confidence</dt><dd>{{ classificationLabel(doc) }}</dd></div>
+                        }
+                        @if (doc.classificationReason) {
+                          <div><dt>Why this category</dt><dd>{{ doc.classificationReason }}</dd></div>
                         }
                         @if (confidenceLabel(doc)) {
                           <div><dt>OCR confidence</dt><dd>{{ confidenceLabel(doc) }}</dd></div>
                         }
                       </dl>
+                      @if (doc.needsReview) {
+                        <div class="review-box">
+                          <p>
+                            <strong>This document needs a human check</strong> — the
+                            classification was not confident enough to file it
+                            automatically. Pick the right category and confirm it.
+                          </p>
+                          <label>
+                            Category
+                            <select
+                              [value]="effectiveCategory(doc) ?? 'Other'"
+                              (change)="onCategoryChosen(doc, $event)"
+                            >
+                              @for (category of categories; track category) {
+                                <option [value]="category">
+                                  {{ categoryLabel(category) }}
+                                </option>
+                              }
+                            </select>
+                          </label>
+                          <button
+                            type="button"
+                            class="btn btn-small btn-primary"
+                            [disabled]="confirmingId() === doc.id"
+                            (click)="confirmCategory(doc)"
+                          >
+                            {{ confirmingId() === doc.id ? 'Saving…' : 'Confirm category' }}
+                          </button>
+                        </div>
+                      }
                       <p class="ocr-label">Extracted text</p>
                       <pre class="ocr-text">{{ doc.ocrText }}</pre>
                     } @else {
