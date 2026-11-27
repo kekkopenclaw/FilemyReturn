@@ -92,10 +92,11 @@ public class EfDocumentRepository : IDocumentRepository
     /// SQLite, and in PostgreSQL with a case-insensitive collation) and is always scoped
     /// to this workspace, so a search can never leak another workspace's documents.
     /// </summary>
-    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null)
+    public Task<List<Document>> ListByWorkspaceAsync(Guid workspaceId, Guid? archiveId, CancellationToken ct = default, string? search = null, bool? needsReview = null)
     {
         var query = _db.Documents.Where(d => d.WorkspaceId == workspaceId);
         if (archiveId.HasValue) query = query.Where(d => d.ArchiveId == archiveId.Value);
+        if (needsReview.HasValue) query = query.Where(d => d.NeedsReview == needsReview.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
             // Escape LIKE wildcards so the user's text is matched literally.
