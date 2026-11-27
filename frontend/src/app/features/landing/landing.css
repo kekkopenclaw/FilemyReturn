@@ -127,14 +127,14 @@
 
 /* -- Watch-me-scan demo -------------------------------------------------- */
 
+/* The demo is two cards side by side — a white receipt card beside a
+   separate extraction panel — like the preview. The outer figure is just
+   a container; the cards carry the card styling. */
+
 .scan-demo {
   margin: 0;
-  padding: 1.25rem 1.5rem 1.5rem;
-  background: var(--surface);
+  scroll-margin-top: 5rem;
   color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: var(--shadow-soft);
 }
 
 .demo-title {
@@ -152,31 +152,34 @@
 
 .demo-stage {
   display: grid;
-  grid-template-columns: 1fr 3px 0.9fr;
+  grid-template-columns: 1fr 0.9fr;
   gap: 1.25rem;
   align-items: stretch;
 }
 
-/* Green scanline standing beside the extraction panel. */
-.demo-divider {
-  background: var(--green);
-  border-radius: 999px;
-  box-shadow: 0 0 10px rgba(14, 124, 102, 0.45);
+/* White receipt card (22px radius), beside the extraction panel. */
+.receipt-card {
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
 }
 
 .demo-extracted {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
 }
 
 .receipt {
   position: relative;
   overflow: hidden;
-  padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
   font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   font-size: 0.85rem;
   line-height: 1.5;
@@ -549,10 +552,6 @@
 
   .demo-stage {
     grid-template-columns: 1fr;
-  }
-
-  .demo-divider {
-    height: 3px;
   }
 
   .steps,
