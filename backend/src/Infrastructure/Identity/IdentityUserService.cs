@@ -44,7 +44,16 @@ public class IdentityUserService : IUserIdentityService
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim()
         };
         var result = await _users.CreateAsync(user, password);
-        if (!result.Succeeded) return (false, result.Errors.Select(e => e.Description).ToArray(), null);
+        if (!result.Succeeded)
+        {
+            // SECURITY: never reveal that an email is already registered — Identity's
+            // DuplicateEmail / DuplicateUserName errors would let anyone enumerate
+            // accounts. Return one generic error instead; password-policy errors are
+            // still passed through so the user can fix their password.
+            if (result.Errors.Any(e => e.Code is "DuplicateEmail" or "DuplicateUserName"))
+                return (false, ["Registration failed."], null);
+            return (false, result.Errors.Select(e => e.Description).ToArray(), null);
+        }
         return (true, [], ToProfile(user));
     }
 
