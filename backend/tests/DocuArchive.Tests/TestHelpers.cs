@@ -62,18 +62,32 @@ public static class TestHelpers
     }
 
     public static async Task<Guid> SeedDocumentAsync(CustomWebApplicationFactory factory, Guid workspaceId, string userId)
+        => await SeedDocumentAsync(factory, workspaceId, userId, "test.pdf", null, null, null);
+
+    /// <summary>
+    /// Seeds a document. Optional <paramref name="fileName"/>, <paramref name="vendor"/>
+    /// and <paramref name="category"/> let tests build a document that already looks
+    /// OCR-processed (filing rules match on vendor, category and file name).
+    /// </summary>
+    public static async Task<Guid> SeedDocumentAsync(CustomWebApplicationFactory factory, Guid workspaceId, string userId,
+        string fileName, string? vendor, string? category, Guid? archiveId = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var doc = new Document
         {
             WorkspaceId = workspaceId,
-            OriginalFileName = "test.pdf",
+            ArchiveId = archiveId,
+            OriginalFileName = fileName,
             StorageKey = $"{Guid.NewGuid():N}.pdf",
             Sha256Hash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")[..8],
             FileSizeBytes = 1234,
             MimeType = "application/pdf",
-            CreatedById = userId
+            CreatedById = userId,
+            ExtractedVendor = vendor,
+            SuggestedCategory = category,
+            OcrStatus = category is null && vendor is null ? OcrStatus.NotStarted : OcrStatus.Completed,
+            Status = category is null && vendor is null ? DocumentStatus.Uploaded : DocumentStatus.Ready
         };
         db.Documents.Add(doc);
         await db.SaveChangesAsync();

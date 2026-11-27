@@ -67,6 +67,7 @@ describe('DocumentList tags', () => {
     deleteTag: ReturnType<typeof vi.fn>;
     assignTag: ReturnType<typeof vi.fn>;
     unassignTag: ReturnType<typeof vi.fn>;
+    applyFilingRules: ReturnType<typeof vi.fn>;
   };
 
   const create = async (docs: DocumentSummary[] = [docWithTag]) => {
@@ -85,6 +86,7 @@ describe('DocumentList tags', () => {
       deleteTag: vi.fn(() => of(undefined)),
       assignTag: vi.fn(() => of([tags[0], tags[1]])),
       unassignTag: vi.fn(() => of([])),
+      applyFilingRules: vi.fn(() => of({ ...docWithoutTag, tags: [tags[0]] })),
     };
     const workspaceService = {
       workspaces: signal([workspace]),
@@ -213,5 +215,16 @@ describe('DocumentList tags', () => {
     fixture.detectChanges();
     expect(api.deleteTag).toHaveBeenCalledWith('ws-1', 't2');
     expect(el.textContent).not.toContain('Receipts');
+  });
+
+  it('applying filing rules calls the API and refreshes the row', async () => {
+    const { fixture, el } = await create([docWithoutTag]);
+    const apply = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Apply filing rules',
+    ) as HTMLButtonElement;
+    apply.click();
+    fixture.detectChanges();
+    expect(api.applyFilingRules).toHaveBeenCalledWith('ws-1', 'd2');
+    expect(el.querySelectorAll('td.doc-name .tag-chip').length).toBe(1);
   });
 });

@@ -64,6 +64,46 @@ public class TagsController : ControllerBase
     }
 }
 
+/// <summary>Filing-rule endpoints, nested under a workspace (Phase 4 organisation). Thin controller — logic lives in <see cref="FilingRuleService"/> (Application).</summary>
+[ApiController]
+[Route("api/workspaces/{workspaceId:guid}/filing-rules")]
+[Authorize]
+[EnableRateLimiting("default")]
+public class FilingRulesController : ControllerBase
+{
+    private readonly FilingRuleService _rules;
+    public FilingRulesController(FilingRuleService rules) => _rules = rules;
+
+    [HttpGet]
+    public async Task<ActionResult<List<FilingRuleDto>>> List(Guid workspaceId, CancellationToken ct)
+        => Ok(await _rules.ListAsync(ControllerUser.Id(this), workspaceId, ct));
+
+    [HttpGet("{ruleId:guid}")]
+    public async Task<ActionResult<FilingRuleDto>> Get(Guid workspaceId, Guid ruleId, CancellationToken ct)
+        => Ok(await _rules.GetAsync(ControllerUser.Id(this), workspaceId, ruleId, ct));
+
+    /// <summary>Creates a filing rule. ReadOnly members cannot create (StandardUser+ required). 400 on a duplicate name, no condition, no action, or an unknown category.</summary>
+    [HttpPost]
+    public async Task<ActionResult<FilingRuleDto>> Create(Guid workspaceId, [FromBody] CreateFilingRuleRequest request, CancellationToken ct)
+    {
+        var rule = await _rules.CreateAsync(ControllerUser.Id(this), workspaceId, request, ct);
+        return CreatedAtAction(nameof(Get), new { workspaceId, ruleId = rule.Id }, rule);
+    }
+
+    /// <summary>Updates a filing rule (including enabling/disabling it). StandardUser+ required.</summary>
+    [HttpPut("{ruleId:guid}")]
+    public async Task<ActionResult<FilingRuleDto>> Update(Guid workspaceId, Guid ruleId, [FromBody] UpdateFilingRuleRequest request, CancellationToken ct)
+        => Ok(await _rules.UpdateAsync(ControllerUser.Id(this), workspaceId, ruleId, request, ct));
+
+    /// <summary>Deletes a filing rule. StandardUser+ required.</summary>
+    [HttpDelete("{ruleId:guid}")]
+    public async Task<IActionResult> Delete(Guid workspaceId, Guid ruleId, CancellationToken ct)
+    {
+        await _rules.DeleteAsync(ControllerUser.Id(this), workspaceId, ruleId, ct);
+        return NoContent();
+    }
+}
+
 /// <summary>Document read/upload/download endpoints (Phase 2 adds upload + download).</summary>
 [ApiController]
 [Route("api/workspaces/{workspaceId:guid}/documents")]
@@ -165,6 +205,17 @@ public class DocumentsController : ControllerBase
     [HttpDelete("{documentId:guid}/tags/{tagId:guid}")]
     public async Task<ActionResult<List<TagDto>>> UnassignTag(Guid workspaceId, Guid documentId, Guid tagId, [FromServices] TagService tags, CancellationToken ct)
         => Ok(await tags.UnassignAsync(ControllerUser.Id(this), workspaceId, documentId, tagId, ct));
+
+    /// <summary>
+    /// Manually runs the workspace's filing rules against one document (Phase 4).
+    /// StandardUser+ only. Use it after creating a new rule, to file documents
+    /// that were uploaded before the rule existed. Works on any document, even
+    /// before OCR has run (file-name conditions can still match). Returns the
+    /// updated document (tags included).
+    /// </summary>
+    [HttpPost("{documentId:guid}/apply-rules")]
+    public async Task<ActionResult<DocumentDto>> ApplyRules(Guid workspaceId, Guid documentId, [FromServices] FilingRuleService rules, CancellationToken ct)
+        => Ok(await rules.ApplyToDocumentAsync(ControllerUser.Id(this), workspaceId, documentId, ct));
 }
 
 /// <summary>Upload history for a workspace (newest first, with uploader).</summary>

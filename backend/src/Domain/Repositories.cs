@@ -44,6 +44,19 @@ public interface ITagRepository
     Task<List<Tag>> ListTagsForDocumentAsync(Guid workspaceId, Guid documentId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Persistence for filing rules (always scoped to a workspace).</summary>
+public interface IFilingRuleRepository
+{
+    Task<FilingRule> AddAsync(FilingRule rule, CancellationToken cancellationToken = default);
+    Task<FilingRule?> GetByIdAsync(Guid workspaceId, Guid ruleId, CancellationToken cancellationToken = default);
+    /// <summary>Case-insensitive name lookup (for duplicate detection).</summary>
+    Task<FilingRule?> GetByNameAsync(Guid workspaceId, string name, CancellationToken cancellationToken = default);
+    /// <summary>All rules in the workspace, in evaluation order (Priority, then CreatedAt).</summary>
+    Task<List<FilingRule>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    Task UpdateAsync(FilingRule rule, CancellationToken cancellationToken = default);
+    Task DeleteAsync(FilingRule rule, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support; Phase 3 adds OCR claim/update.</summary>
 public interface IDocumentRepository
 {

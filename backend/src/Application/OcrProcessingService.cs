@@ -18,6 +18,7 @@ public class OcrProcessingService
     private readonly IAuditService _audit;
     private readonly IWorkspaceAccessService _access;
     private readonly IOcrJobQueue? _queue;
+    private readonly FilingRuleService _rules;
 
     public OcrProcessingService(
         IDocumentRepository documents,
@@ -25,10 +26,11 @@ public class OcrProcessingService
         IOcrEngine ocr,
         IAuditService audit,
         IWorkspaceAccessService access,
+        FilingRuleService rules,
         IOcrJobQueue? queue = null)
     {
         _documents = documents; _storage = storage; _ocr = ocr;
-        _audit = audit; _access = access; _queue = queue;
+        _audit = audit; _access = access; _rules = rules; _queue = queue;
     }
 
     /// <summary>
@@ -72,6 +74,18 @@ public class OcrProcessingService
             await _documents.UpdateAsync(doc, ct);
             await _audit.LogAsync(processedByUserId, workspaceId, "Document.OcrCompleted", "Document", doc.Id.ToString(),
                 $"OCR completed for {doc.OriginalFileName} (vendor: {fields.Vendor ?? "—"}, total: {fields.Currency}{fields.Total?.ToString("0.00") ?? "—"}, category: {classification.Category} {classification.Confidence:0}%{(classification.NeedsReview ? ", needs review" : "")})", ct);
+            // Phase 4 filing rules: file the document automatically. A stale rule
+            // must never fail a Ready document, so evaluation failures are caught
+            // and audited here (the evaluator itself already skips stale references).
+            try
+            {
+                await _rules.EvaluateAsync(processedByUserId, workspaceId, doc, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                await _audit.LogAsync(processedByUserId, workspaceId, "Document.RuleEvaluationFailed", "Document", doc.Id.ToString(),
+                    $"Filing-rule evaluation failed for {doc.OriginalFileName}: {ex.GetType().Name}", ct);
+            }
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

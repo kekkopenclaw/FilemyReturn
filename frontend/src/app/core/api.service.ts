@@ -7,6 +7,8 @@ import {
   AuditLogEntry,
   DashboardStats,
   DocumentSummary,
+  FilingRule,
+  FilingRuleInput,
   Tag,
   Workspace,
 } from './models';
@@ -208,6 +210,65 @@ export class ApiService {
   ): Observable<Tag[]> {
     return this.http.delete<Tag[]>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/tags/${tagId}`,
+    );
+  }
+
+  // -- Filing rules (Phase 4 organisation) --------------------------------
+
+  /** Lists a workspace's filing rules, in evaluation order (priority, then created). */
+  getFilingRules(workspaceId: string): Observable<FilingRule[]> {
+    return this.http.get<FilingRule[]>(
+      `${this.baseUrl}/workspaces/${workspaceId}/filing-rules`,
+    );
+  }
+
+  /**
+   * Creates a filing rule. Needs at least one condition (vendor, category or
+   * file name) and at least one action (assign a tag, set a category or move
+   * to an archive). 400 on a duplicate name, a missing condition/action or an
+   * unknown category; 404 when the tag or archive is not in this workspace.
+   */
+  createFilingRule(
+    workspaceId: string,
+    input: FilingRuleInput,
+  ): Observable<FilingRule> {
+    return this.http.post<FilingRule>(
+      `${this.baseUrl}/workspaces/${workspaceId}/filing-rules`,
+      input,
+    );
+  }
+
+  /** Updates a filing rule (including enabling/disabling it). */
+  updateFilingRule(
+    workspaceId: string,
+    ruleId: string,
+    input: FilingRuleInput,
+  ): Observable<FilingRule> {
+    return this.http.put<FilingRule>(
+      `${this.baseUrl}/workspaces/${workspaceId}/filing-rules/${ruleId}`,
+      input,
+    );
+  }
+
+  /** Deletes a filing rule. */
+  deleteFilingRule(workspaceId: string, ruleId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/workspaces/${workspaceId}/filing-rules/${ruleId}`,
+    );
+  }
+
+  /**
+   * Manually runs the workspace's filing rules against one document — for
+   * example after creating a new rule, to file documents uploaded before it
+   * existed. Returns the updated document (tags included).
+   */
+  applyFilingRules(
+    workspaceId: string,
+    documentId: string,
+  ): Observable<DocumentSummary> {
+    return this.http.post<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/apply-rules`,
+      {},
     );
   }
 

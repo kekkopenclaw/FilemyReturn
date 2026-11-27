@@ -61,6 +61,42 @@ export interface Tag {
   createdAt: string;
 }
 
+/**
+ * A filing rule (Phase 4 organisation). At least one condition
+ * (vendorContains, category, fileNameContains) and at least one action
+ * (assignTagId, setCategory, moveToArchiveId) are required. Rules run in
+ * priority order after OCR finishes; all matching rules apply, and for the
+ * single-value actions the last matching rule wins.
+ */
+export interface FilingRule {
+  id: string;
+  workspaceId: string;
+  name: string;
+  isEnabled: boolean;
+  priority: number;
+  vendorContains: string | null;
+  category: string | null;
+  fileNameContains: string | null;
+  assignTagId: string | null;
+  setCategory: string | null;
+  moveToArchiveId: string | null;
+  appliedCount: number;
+  createdAt: string;
+}
+
+/** Payload for creating or updating a filing rule. */
+export interface FilingRuleInput {
+  name: string;
+  isEnabled: boolean;
+  priority: number;
+  vendorContains: string | null;
+  category: string | null;
+  fileNameContains: string | null;
+  assignTagId: string | null;
+  setCategory: string | null;
+  moveToArchiveId: string | null;
+}
+
 /** Backend DocumentStatus enum: Uploaded / Processing / Ready / Failed. */
 export type DocumentStatus =
   | 'Uploaded'

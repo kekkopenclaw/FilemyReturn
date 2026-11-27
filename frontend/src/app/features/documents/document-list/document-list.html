@@ -30,6 +30,9 @@
   @if (uploadError()) {
     <p class="error-banner" role="alert">{{ uploadError() }}</p>
   }
+  @if (applyRulesError()) {
+    <p class="error-banner" role="alert">{{ applyRulesError() }}</p>
+  }
   @if (uploadSuccess()) {
     <p class="success-banner" role="status">Document uploaded.</p>
   }
@@ -206,6 +209,14 @@
                   (click)="openViewer(doc)"
                 >
                   View
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small"
+                  [disabled]="applyingRulesId() === doc.id"
+                  (click)="applyRules(doc)"
+                >
+                  {{ applyingRulesId() === doc.id ? 'Applying…' : 'Apply filing rules' }}
                 </button>
                 <button
                   type="button"

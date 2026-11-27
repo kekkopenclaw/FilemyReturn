@@ -213,6 +213,68 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.ToTable("DocumentTags");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.FilingRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AppliedCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("AssignTagId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileNameContains")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("MoveToArchiveId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SetCategory")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VendorContains")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignTagId");
+
+                    b.HasIndex("MoveToArchiveId");
+
+                    b.HasIndex("WorkspaceId");
+
+                    b.HasIndex("WorkspaceId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("FilingRules");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -594,6 +656,31 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("DocuArchive.Domain.FilingRule", b =>
+                {
+                    b.HasOne("DocuArchive.Domain.Tag", "AssignTag")
+                        .WithMany()
+                        .HasForeignKey("AssignTagId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DocuArchive.Domain.Archive", "MoveToArchive")
+                        .WithMany()
+                        .HasForeignKey("MoveToArchiveId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
+                        .WithMany("FilingRules")
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AssignTag");
+
+                    b.Navigation("MoveToArchive");
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("DocuArchive.Domain.Tag", b =>
                 {
                     b.HasOne("DocuArchive.Domain.Workspace", "Workspace")
@@ -687,6 +774,8 @@ namespace DocuArchive.Infrastructure.Migrations
                     b.Navigation("Archives");
 
                     b.Navigation("Documents");
+
+                    b.Navigation("FilingRules");
 
                     b.Navigation("Memberships");
 

@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Archive> Archives => Set<Archive>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<DocumentTag> DocumentTags => Set<DocumentTag>();
+    public DbSet<FilingRule> FilingRules => Set<FilingRule>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -65,6 +66,25 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             // enforces case-insensitive uniqueness before insert, this catches races.
             e.HasIndex(t => new { t.WorkspaceId, t.Name }).IsUnique();
             e.HasOne(t => t.Workspace).WithMany(w => w.Tags).HasForeignKey(t => t.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FilingRule>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.Name).IsRequired().HasMaxLength(100);
+            e.Property(r => r.VendorContains).HasMaxLength(200);
+            e.Property(r => r.Category).HasMaxLength(64);
+            e.Property(r => r.FileNameContains).HasMaxLength(200);
+            e.Property(r => r.SetCategory).HasMaxLength(64);
+            e.HasIndex(r => r.WorkspaceId);
+            // Exact-duplicate guard (case-sensitive in both providers); the service
+            // enforces case-insensitive uniqueness before insert, this catches races.
+            e.HasIndex(r => new { r.WorkspaceId, r.Name }).IsUnique();
+            e.HasOne(r => r.Workspace).WithMany(w => w.FilingRules).HasForeignKey(r => r.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            // Deleting a tag or archive never deletes the rule — the stale action
+            // is skipped at evaluation time (see FilingRuleService).
+            e.HasOne(r => r.AssignTag).WithMany().HasForeignKey(r => r.AssignTagId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(r => r.MoveToArchive).WithMany().HasForeignKey(r => r.MoveToArchiveId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DocumentTag>(e =>

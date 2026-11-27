@@ -69,6 +69,9 @@ export class DocumentList {
   /** Phase 3: document whose OCR details panel is open. */
   protected readonly expandedId = signal<string | null>(null);
   protected readonly reprocessingId = signal<string | null>(null);
+  /** Phase 4 filing rules: document whose rules are being applied manually. */
+  protected readonly applyingRulesId = signal<string | null>(null);
+  protected readonly applyRulesError = signal<string | null>(null);
   /** Phase 6: document open in the in-app viewer, or null when closed. */
   protected readonly viewingDoc = signal<DocumentSummary | null>(null);
   /** Phase 3 classification: show only the human-review queue (from ?review=true). */
@@ -356,6 +359,32 @@ export class DocumentList {
       error: () => {
         this.reprocessingId.set(null);
         this.uploadError.set('Could not re-run OCR for this document.');
+      },
+    });
+  }
+
+  /**
+   * Phase 4 filing rules: manually run the workspace's rules against one
+   * document — for example after creating a new rule, to file documents that
+   * were uploaded before it existed. The returned document replaces the row.
+   */
+  protected applyRules(doc: DocumentSummary): void {
+    const workspaceId = this.workspaceService.selectedWorkspaceId();
+    if (!workspaceId || this.applyingRulesId()) return;
+    this.applyingRulesId.set(doc.id);
+    this.applyRulesError.set(null);
+    this.api.applyFilingRules(workspaceId, doc.id).subscribe({
+      next: (updated) => {
+        this.applyingRulesId.set(null);
+        this.documents.set(
+          this.documents().map((d) => (d.id === updated.id ? updated : d)),
+        );
+      },
+      error: () => {
+        this.applyingRulesId.set(null);
+        this.applyRulesError.set(
+          'Could not apply the filing rules. Please try again.',
+        );
       },
     });
   }

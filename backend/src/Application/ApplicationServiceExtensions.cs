@@ -13,6 +13,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<WorkspaceService>();
         services.AddScoped<ArchiveService>();
         services.AddScoped<TagService>();
+        services.AddScoped<FilingRuleService>();
         services.AddScoped<DocumentService>();
         services.AddScoped<DocumentUploadService>();
         services.AddScoped<OcrProcessingService>();

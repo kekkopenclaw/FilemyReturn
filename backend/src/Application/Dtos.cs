@@ -59,6 +59,39 @@ public record CreateTagRequest(
 /// <summary>Assign a tag to a document. Body: { "tagId": "…" }.</summary>
 public record AssignTagRequest([Required] Guid TagId);
 
+/// <summary>
+/// A filing rule (Phase 4 organisation). Conditions are all optional individually,
+/// but at least one condition and at least one action are required (enforced by
+/// the service). Category/SetCategory must be one of the classifier categories.
+/// </summary>
+public record FilingRuleDto(
+    Guid Id, Guid WorkspaceId, string Name, bool IsEnabled, int Priority,
+    string? VendorContains, string? Category, string? FileNameContains,
+    Guid? AssignTagId, string? SetCategory, Guid? MoveToArchiveId,
+    int AppliedCount, DateTime CreatedAt);
+
+public record CreateFilingRuleRequest(
+    [Required, MinLength(1), MaxLength(100)] string Name,
+    bool IsEnabled = true,
+    [Range(0, 10000)] int Priority = 0,
+    [MaxLength(200)] string? VendorContains = null,
+    [MaxLength(64)] string? Category = null,
+    [MaxLength(200)] string? FileNameContains = null,
+    Guid? AssignTagId = null,
+    [MaxLength(64)] string? SetCategory = null,
+    Guid? MoveToArchiveId = null);
+
+public record UpdateFilingRuleRequest(
+    [Required, MinLength(1), MaxLength(100)] string Name,
+    bool IsEnabled = true,
+    [Range(0, 10000)] int Priority = 0,
+    [MaxLength(200)] string? VendorContains = null,
+    [MaxLength(64)] string? Category = null,
+    [MaxLength(200)] string? FileNameContains = null,
+    Guid? AssignTagId = null,
+    [MaxLength(64)] string? SetCategory = null,
+    Guid? MoveToArchiveId = null);
+
 public record DocumentDto(
     Guid Id, Guid WorkspaceId, Guid? ArchiveId, string OriginalFileName,
     string Sha256Hash, long FileSizeBytes, string MimeType,

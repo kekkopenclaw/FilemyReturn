@@ -55,6 +55,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IWorkspaceRepository, EfWorkspaceRepository>();
         services.AddScoped<IArchiveRepository, EfArchiveRepository>();
         services.AddScoped<ITagRepository, EfTagRepository>();
+        services.AddScoped<IFilingRuleRepository, EfFilingRuleRepository>();
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
         services.AddScoped<IAuditRepository, EfAuditRepository>();
         services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();

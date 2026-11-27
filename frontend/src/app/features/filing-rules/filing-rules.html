@@ -1,0 +1,201 @@
+<h1>Filing rules</h1>
+<p class="page-intro">
+  @if (workspaceService.selectedWorkspace(); as workspace) {
+    Rules in <strong>{{ workspace.name }}</strong> file documents automatically
+    when they finish being read: if a document matches a rule, the rule's actions
+    run — a tag is added, a category is set, or the document moves to an archive.
+    Rules run in priority order, and every matching rule applies.
+  } @else {
+    Select a workspace to see its filing rules.
+  }
+</p>
+
+@if (workspaceService.workspaces().length === 0 && !workspaceService.loading()) {
+  <app-empty-state
+    message="No workspaces yet"
+    detail="Create a workspace first — filing rules belong to a workspace."
+  />
+} @else {
+  <section class="create-card" aria-labelledby="rule-form-heading">
+    <h2 id="rule-form-heading">
+      {{ editingId() ? 'Edit filing rule' : 'Create a filing rule' }}
+    </h2>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      @if (formError()) {
+        <p class="error-banner" role="alert">{{ formError() }}</p>
+      }
+      @if (formSuccess()) {
+        <p class="success-banner" role="status">{{ formSuccess() }}</p>
+      }
+      <div class="field">
+        <label for="rule-name">Rule name</label>
+        <input
+          id="rule-name"
+          type="text"
+          formControlName="name"
+          [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched"
+        />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p class="field-error">Name is required (up to 100 characters).</p>
+        }
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="rule-priority">Priority</label>
+          <input
+            id="rule-priority"
+            type="number"
+            min="0"
+            max="10000"
+            formControlName="priority"
+          />
+          <p class="field-hint">Lower runs first. Leave 0 unless rules must run in a set order.</p>
+        </div>
+        <div class="field field-check">
+          <label for="rule-enabled">
+            <input id="rule-enabled" type="checkbox" formControlName="isEnabled" />
+            Enabled
+          </label>
+        </div>
+      </div>
+
+      <fieldset class="rule-group">
+        <legend>When a document matches — at least one condition</legend>
+        <div class="field">
+          <label for="rule-vendor">Vendor contains</label>
+          <input
+            id="rule-vendor"
+            type="text"
+            formControlName="vendorContains"
+            placeholder="e.g. Tesco"
+          />
+        </div>
+        <div class="field">
+          <label for="rule-category">Category is</label>
+          <select id="rule-category" formControlName="category">
+            <option value="">Any category</option>
+            @for (category of categories; track category) {
+              <option [value]="category">{{ filingCategoryLabel(category) }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="rule-filename">File name contains</label>
+          <input
+            id="rule-filename"
+            type="text"
+            formControlName="fileNameContains"
+            placeholder="e.g. receipt"
+          />
+        </div>
+      </fieldset>
+
+      <fieldset class="rule-group">
+        <legend>Then file it this way — at least one action</legend>
+        <div class="field">
+          <label for="rule-assign-tag">Assign tag</label>
+          <select id="rule-assign-tag" formControlName="assignTagId">
+            <option value="">No tag</option>
+            @for (tag of tags(); track tag.id) {
+              <option [value]="tag.id">{{ tag.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="rule-set-category">Set category</label>
+          <select id="rule-set-category" formControlName="setCategory">
+            <option value="">Keep the suggested category</option>
+            @for (category of categories; track category) {
+              <option [value]="category">{{ filingCategoryLabel(category) }}</option>
+            }
+          </select>
+          <p class="field-hint">A category set by a rule counts as confirmed by you.</p>
+        </div>
+        <div class="field">
+          <label for="rule-archive">Move to archive</label>
+          <select id="rule-archive" formControlName="moveToArchiveId">
+            <option value="">Stay where it is</option>
+            @for (archive of archives(); track archive.id) {
+              <option [value]="archive.id">{{ archive.name }}</option>
+            }
+          </select>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving() || !workspaceService.selectedWorkspaceId()"
+        >
+          {{ saving() ? 'Saving…' : editingId() ? 'Save changes' : 'Create rule' }}
+        </button>
+        @if (editingId()) {
+          <button type="button" class="btn" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+    </form>
+  </section>
+
+  @if (loading()) {
+    <app-loading-spinner />
+  } @else if (error()) {
+    <p class="error-banner" role="alert">{{ error() }}</p>
+  } @else if (rules().length === 0) {
+    <app-empty-state
+      message="No filing rules yet"
+      detail="Create your first rule above — for example, vendor contains “Tesco” and assign the tag “Expenses”."
+    />
+  } @else {
+    <ul class="rule-list">
+      @for (rule of rules(); track rule.id) {
+        <li class="rule-row">
+          <div class="rule-head">
+            <span class="rule-name">{{ rule.name }}</span>
+            <span class="badge {{ rule.isEnabled ? 'badge-success' : 'badge-neutral' }}">
+              {{ rule.isEnabled ? 'Enabled' : 'Disabled' }}
+            </span>
+            <span class="rule-meta">Priority {{ rule.priority }}</span>
+            <span class="rule-meta">{{ appliedLabel(rule) }}</span>
+          </div>
+          <dl class="rule-detail">
+            <div>
+              <dt>If</dt>
+              <dd>{{ describeConditions(rule) }}</dd>
+            </div>
+            <div>
+              <dt>Then</dt>
+              <dd>{{ describeActions(rule) }}</dd>
+            </div>
+          </dl>
+          <p class="rule-meta">Created {{ rule.createdAt | date: 'medium' }}</p>
+          <div class="rule-actions">
+            <button
+              type="button"
+              class="btn btn-small"
+              (click)="startEdit(rule)"
+            >
+              Edit rule {{ rule.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-small"
+              [disabled]="togglingId() === rule.id"
+              (click)="toggleEnabled(rule)"
+            >
+              {{ rule.isEnabled ? 'Disable rule ' : 'Enable rule ' }}{{ rule.name }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-small"
+              [disabled]="deletingId() === rule.id"
+              (click)="deleteRule(rule)"
+            >
+              Delete rule {{ rule.name }}
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+}

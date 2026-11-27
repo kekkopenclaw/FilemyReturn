@@ -70,3 +70,14 @@ public class DuplicateTagException : ValidationException
     public DuplicateTagException(string name)
         : base($"A tag named '{name}' already exists in this workspace.") { }
 }
+
+/// <summary>
+/// Two identical filing-rule names raced past the duplicate pre-check and the
+/// unique index (WorkspaceId, Name) rejected the second insert. That is a
+/// duplicate (400), not a server error.
+/// </summary>
+public class DuplicateFilingRuleException : ValidationException
+{
+    public DuplicateFilingRuleException(string name)
+        : base($"A filing rule named '{name}' already exists in this workspace.") { }
+}

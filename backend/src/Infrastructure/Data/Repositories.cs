@@ -149,6 +149,57 @@ public class EfTagRepository : ITagRepository
             .OrderBy(t => t.Name).ToListAsync(ct);
 }
 
+public class EfFilingRuleRepository : IFilingRuleRepository
+{
+    private readonly AppDbContext _db;
+    public EfFilingRuleRepository(AppDbContext db) => _db = db;
+
+    public async Task<FilingRule> AddAsync(FilingRule rule, CancellationToken ct = default)
+    {
+        _db.FilingRules.Add(rule);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // RACE: two identical rule names passed the duplicate pre-check at the
+            // same time and the unique index (WorkspaceId, Name) rejected the
+            // second insert. That is a duplicate (400), not a server error —
+            // translate it; anything else rethrows.
+            var duplicate = await GetByNameAsync(rule.WorkspaceId, rule.Name, ct);
+            if (duplicate is not null) throw new DuplicateFilingRuleException(rule.Name);
+            throw;
+        }
+        return rule;
+    }
+
+    public Task<FilingRule?> GetByIdAsync(Guid workspaceId, Guid ruleId, CancellationToken ct = default)
+        => _db.FilingRules.FirstOrDefaultAsync(r => r.WorkspaceId == workspaceId && r.Id == ruleId, ct);
+
+    public Task<FilingRule?> GetByNameAsync(Guid workspaceId, string name, CancellationToken ct = default)
+    {
+        var lowered = name.ToLowerInvariant();
+        return _db.FilingRules.FirstOrDefaultAsync(r => r.WorkspaceId == workspaceId && r.Name.ToLower() == lowered, ct);
+    }
+
+    public Task<List<FilingRule>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
+        => _db.FilingRules.Where(r => r.WorkspaceId == workspaceId)
+            .OrderBy(r => r.Priority).ThenBy(r => r.CreatedAt).ToListAsync(ct);
+
+    public async Task UpdateAsync(FilingRule rule, CancellationToken ct = default)
+    {
+        _db.FilingRules.Update(rule);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(FilingRule rule, CancellationToken ct = default)
+    {
+        _db.FilingRules.Remove(rule);
+        await _db.SaveChangesAsync(ct);
+    }
+}
+
 public class EfDocumentRepository : IDocumentRepository
 {
     private readonly AppDbContext _db;
