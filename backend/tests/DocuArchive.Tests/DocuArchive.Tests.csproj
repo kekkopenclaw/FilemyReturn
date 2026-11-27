@@ -26,14 +26,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="TestData\demo-receipt.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="TestData\demo-receipt.pdf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+  <!-- Test fixture binaries (TestData/demo-receipt.*) are NOT copied here:
+       they cannot travel in a text-only snapshot push, so the tests read them
+       from DemoReceiptFixtures.cs (embedded base64) when the files are absent. -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebApi\DocuArchive.Api.csproj" />

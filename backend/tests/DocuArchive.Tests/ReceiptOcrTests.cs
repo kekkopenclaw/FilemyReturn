@@ -24,13 +24,9 @@ public class ReceiptOcrTests : IClassFixture<CustomWebApplicationFactory>
     public ReceiptOcrTests(CustomWebApplicationFactory factory) { _factory = factory; _factory.EnsureCreated(); }
 
     private static string TestData(string name)
-    {
-        var dir = AppContext.BaseDirectory;
-        var path = Path.Combine(dir, "TestData", name);
-        if (File.Exists(path)) return path;
-        // Fallback: repo-relative (dotnet test from the test project dir).
-        return Path.Combine(Directory.GetCurrentDirectory(), "TestData", name);
-    }
+        // On-disk TestData files when present (local dev); embedded base64
+        // copies otherwise (CI checkout — the binaries cannot be snapshot-pushed).
+        => DemoReceiptFixtures.EnsureTestData(name);
 
     // ---------- ReceiptFieldExtractor (pure, no I/O) ----------
 
