@@ -33,14 +33,25 @@ for OCR.
   Documents page), rule+regex document classifier
   (Receipt/Invoice/Contract/BankStatement/Letter/Other) with confidence and a
   human-review queue.
+- **Phase 4 — Organisation:** done. Tags, filing rules, metadata editing.
+- **Phase 5 — Search:** done. Free-text search with filters and snippets.
+- **Phase 6 — Viewer:** done. In-app document preview (PDF/images).
+- **Phase 7 — Physical archive:** done. Boxes with QR labels and deep links.
+- **Phase 8 — Security hardening:** done. Admin-only backup export,
+  refresh rate-limit fix, and the remaining hardening items (see TODO.md).
+  Still open and blocked on Francesco only: email verification + CAPTCHA on
+  register (need his email-provider account / keys).
+- **Phase 9 — Deployment:** done. Production config, HTTPS, backups, and
+  in-app monitoring: admin-only `GET /api/admin/monitoring` and a
+  `/monitoring` page (uptime, version/commit, counts by status, review-queue
+  depth, storage, failed logins in the last 24h, last backup). No external
+  uptime pings or alerts — see `docs/MONITORING.md`.
 - **Design:** the live site uses the cream base (light warm off-white
   `#fcfcf9` + teal green `#0e7c66`) from the DocuArchive preview. A futuristic
   3D cinematic concept lives as a separate `/concept` route in the Angular app
   and is a preview only until approved.
 
-See `TODO.md` for what remains (Phase 4 organisation, Phase 5 search,
-Phase 6 viewer, Phase 7 physical archive, Phase 8 security hardening,
-Phase 9 deployment) and `docs/ARCHITECTURE.md` for the plan.
+See `TODO.md` for what remains and `docs/ARCHITECTURE.md` for the plan.
 
 ## How to run
 

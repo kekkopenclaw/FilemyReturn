@@ -91,6 +91,11 @@ public record DocumentSearchCriteria(
     bool? NeedsReview,
     DocumentStatus? Status);
 
+/// <summary>System-wide document counts (Phase 9 monitoring). One query, no rows loaded.</summary>
+public record DocumentStatusCounts(
+    int Total, int Uploaded, int Processing, int Ready, int Failed,
+    int OcrQueued, int OcrProcessing, int OcrFailed, int NeedsReview);
+
 /// <summary>Persistence for documents (always scoped to a workspace). Phase 2 adds upload (create) support; Phase 3 adds OCR claim/update.</summary>
 public interface IDocumentRepository
 {
@@ -107,6 +112,8 @@ public interface IDocumentRepository
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     /// <summary>Total documents in the system (Phase 8 backup info).</summary>
     Task<int> CountAllAsync(CancellationToken cancellationToken = default);
+    /// <summary>System-wide counts by document/OCR status plus the human-review queue depth (Phase 9 monitoring). One grouped query.</summary>
+    Task<DocumentStatusCounts> CountByStatusAsync(CancellationToken cancellationToken = default);
     /// <summary>Documents sitting in one physical box (Phase 7), newest first. Tags are loaded with them, like the list endpoint.</summary>
     Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken cancellationToken = default);
     /// <summary>Persists changes to an already-tracked document (status, OCR text, extracted fields).</summary>
@@ -128,6 +135,10 @@ public interface IAuditRepository
     Task<List<AuditLog>> ListByWorkspaceAsync(Guid workspaceId, int skip, int take, CancellationToken cancellationToken = default);
     Task<int> CountByWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     Task<int> CountByUserAsync(string userId, string action, CancellationToken cancellationToken = default);
+    /// <summary>How many times <paramref name="action"/> happened since <paramref name="since"/> (Phase 9 monitoring: failed logins in the last 24h).</summary>
+    Task<int> CountByActionSinceAsync(string action, DateTime since, CancellationToken cancellationToken = default);
+    /// <summary>The most recent audit entry with this action, or null when it never happened (Phase 9 monitoring: last backup).</summary>
+    Task<AuditLog?> GetLatestByActionAsync(string action, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for hashed refresh tokens.</summary>

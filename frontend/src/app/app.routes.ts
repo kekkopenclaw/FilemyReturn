@@ -8,6 +8,7 @@ import { Landing } from './features/landing/landing';
 import { ArchiveList } from './features/archives/archive-list/archive-list';
 import { AuditLog } from './features/audit/audit-log/audit-log';
 import { Backup } from './features/backup/backup';
+import { Monitoring } from './features/monitoring/monitoring';
 import { Dashboard } from './features/dashboard/dashboard';
 import { DocumentList } from './features/documents/document-list/document-list';
 import { FilingRules } from './features/filing-rules/filing-rules';
@@ -38,6 +39,7 @@ export const routes: Routes = [
       { path: 'boxes', component: PhysicalBoxes },
       { path: 'audit-logs', component: AuditLog },
       { path: 'backup', component: Backup },
+      { path: 'monitoring', component: Monitoring },
     ],
   },
   { path: '**', redirectTo: '' },

@@ -215,6 +215,39 @@ export interface SearchParams {
   status?: string;
 }
 
+// Phase 9 monitoring: a read-only health snapshot of the whole system.
+// `commit` is the deployed git SHA and is null on local runs; `lastBackupAtUtc`
+// / `lastBackupDetails` are null when no backup has ever been downloaded.
+export interface DocumentCounts {
+  total: number;
+  uploaded: number;
+  processing: number;
+  ready: number;
+  failed: number;
+  ocrQueued: number;
+  ocrProcessing: number;
+  ocrFailed: number;
+  needsReview: number;
+}
+
+export interface MonitoringStatus {
+  version: string;
+  commit: string | null;
+  uptimeSeconds: number;
+  databaseProvider: string;
+  databaseSizeBytes: number;
+  userCount: number;
+  workspaceCount: number;
+  documentCount: number;
+  documentsByStatus: DocumentCounts;
+  fileCount: number;
+  storageSizeBytes: number;
+  failedLoginsLast24h: number;
+  lastBackupAtUtc: string | null;
+  lastBackupDetails: string | null;
+  generatedAtUtc: string;
+}
+
 // Phase 8 backup: what a backup would contain right now. `provider` is
 // "Sqlite" or "Postgres" — in-app download is SQLite-only.
 export interface BackupInfo {

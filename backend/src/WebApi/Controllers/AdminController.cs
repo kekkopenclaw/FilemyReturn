@@ -22,7 +22,16 @@ namespace DocuArchive.WebApi.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly BackupService _backup;
-    public AdminController(BackupService backup) => _backup = backup;
+    private readonly MonitoringService _monitoring;
+    public AdminController(BackupService backup, MonitoringService monitoring)
+    {
+        _backup = backup; _monitoring = monitoring;
+    }
+
+    /// <summary>System health snapshot (Phase 9 monitoring): uptime, version, counts, storage, failed logins, last backup.</summary>
+    [HttpGet("monitoring")]
+    public async Task<ActionResult<MonitoringStatusDto>> Monitoring(CancellationToken ct)
+        => Ok(await _monitoring.GetStatusAsync(ControllerUser.Id(this), ct));
 
     /// <summary>What a backup would contain right now (counts and sizes).</summary>
     [HttpGet("backup/info")]

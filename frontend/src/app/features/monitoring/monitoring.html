@@ -1,0 +1,145 @@
+<h1>Monitoring</h1>
+<p class="page-intro">
+  A read-only snapshot of the whole system — uptime, version, counts and
+  storage — for system administrators. The numbers are a point in time, so
+  refresh to see the latest.
+</p>
+
+@if (loading()) {
+  <app-loading-spinner />
+} @else if (forbidden()) {
+  <div class="notice-card" role="status">
+    <h2>System administrators only</h2>
+    <p>
+      Monitoring covers every workspace's data in aggregate, so only a system
+      administrator can see it.
+    </p>
+  </div>
+} @else if (error()) {
+  <div class="error-banner" role="alert">
+    {{ error() }}
+    <button type="button" class="btn btn-secondary" (click)="load()">
+      Try again
+    </button>
+  </div>
+} @else if (status(); as s) {
+  <div class="form-actions">
+    <button type="button" class="btn btn-secondary" (click)="load()">
+      Refresh
+    </button>
+  </div>
+
+  <section class="info-card" aria-label="System">
+    <h2>System</h2>
+    <dl class="info-list">
+      <div>
+        <dt>Uptime</dt>
+        <dd>{{ formatUptime(s.uptimeSeconds) }}</dd>
+      </div>
+      <div>
+        <dt>Version</dt>
+        <dd>{{ s.version }}</dd>
+      </div>
+      <div>
+        <dt>Deployed commit</dt>
+        <dd>{{ s.commit ?? 'Not reported (local run)' }}</dd>
+      </div>
+      <div>
+        <dt>Database</dt>
+        <dd>{{ s.databaseProvider }} — {{ formatBytes(s.databaseSizeBytes) }}</dd>
+      </div>
+      <div>
+        <dt>Checked</dt>
+        <dd>{{ s.generatedAtUtc | date: 'medium' }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="info-card" aria-label="Counts">
+    <h2>Counts</h2>
+    <dl class="info-list">
+      <div>
+        <dt>Users</dt>
+        <dd>{{ s.userCount }}</dd>
+      </div>
+      <div>
+        <dt>Workspaces</dt>
+        <dd>{{ s.workspaceCount }}</dd>
+      </div>
+      <div>
+        <dt>Documents</dt>
+        <dd>{{ s.documentCount }}</dd>
+      </div>
+      <div>
+        <dt>Stored files</dt>
+        <dd>{{ s.fileCount }} files — {{ formatBytes(s.storageSizeBytes) }}</dd>
+      </div>
+      <div>
+        <dt>Failed logins (24h)</dt>
+        <dd>{{ s.failedLoginsLast24h }}</dd>
+      </div>
+      <div>
+        <dt>Last backup</dt>
+        <dd>
+          @if (s.lastBackupAtUtc) {
+            {{ s.lastBackupAtUtc | date: 'medium' }}
+          } @else {
+            Never downloaded
+          }
+        </dd>
+      </div>
+    </dl>
+    @if (s.lastBackupDetails) {
+      <p class="field-hint">{{ s.lastBackupDetails }}</p>
+    }
+  </section>
+
+  <section class="info-card" aria-label="Documents by status">
+    <h2>Documents by status</h2>
+    <dl class="info-list">
+      <div>
+        <dt>Uploaded</dt>
+        <dd>{{ s.documentsByStatus.uploaded }}</dd>
+      </div>
+      <div>
+        <dt>Processing</dt>
+        <dd>{{ s.documentsByStatus.processing }}</dd>
+      </div>
+      <div>
+        <dt>Ready</dt>
+        <dd>{{ s.documentsByStatus.ready }}</dd>
+      </div>
+      <div>
+        <dt>Failed</dt>
+        <dd>{{ s.documentsByStatus.failed }}</dd>
+      </div>
+      <div>
+        <dt>OCR queued</dt>
+        <dd>{{ s.documentsByStatus.ocrQueued }}</dd>
+      </div>
+      <div>
+        <dt>OCR processing</dt>
+        <dd>{{ s.documentsByStatus.ocrProcessing }}</dd>
+      </div>
+      <div>
+        <dt>OCR failed</dt>
+        <dd>{{ s.documentsByStatus.ocrFailed }}</dd>
+      </div>
+      <div>
+        <dt>Needs review</dt>
+        <dd>{{ s.documentsByStatus.needsReview }}</dd>
+      </div>
+    </dl>
+    <p class="field-hint">
+      “Needs review” is the human-review queue: documents whose category the
+      classifier could not decide confidently. Confirm them on the Documents
+      page.
+    </p>
+  </section>
+
+  <p class="field-hint">
+    This page does not ping the site from outside and does not send alerts —
+    it shows what the running app reports right now. See docs/MONITORING.md
+    for what it covers and what it does not.
+  </p>
+}

@@ -100,6 +100,8 @@ public interface IUserIdentityService
     Task<(bool Succeeded, string[] Errors, UserProfile? User)> CreateUserAsync(string email, string password, string? displayName, CancellationToken cancellationToken = default);
     Task<SignInOutcome> CheckPasswordAsync(string email, string password, CancellationToken cancellationToken = default);
     Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
+    /// <summary>Total user accounts in the system (Phase 9 monitoring).</summary>
+    Task<int> CountAllAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Email abstraction. Phase 1 implementation only logs (no SMTP account, no paid service).</summary>

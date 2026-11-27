@@ -410,6 +410,28 @@ public class EfDocumentRepository : IDocumentRepository
     public Task<int> CountAllAsync(CancellationToken ct = default)
         => _db.Documents.CountAsync(ct);
 
+    /// <summary>System-wide counts by document/OCR status plus the human-review queue depth (Phase 9 monitoring).</summary>
+    public async Task<DocumentStatusCounts> CountByStatusAsync(CancellationToken ct = default)
+    {
+        var byStatus = await _db.Documents
+            .GroupBy(d => d.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var byOcr = await _db.Documents
+            .GroupBy(d => d.OcrStatus)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var needsReview = await _db.Documents.CountAsync(d => d.NeedsReview, ct);
+        int Status(DocumentStatus s) => byStatus.Where(x => x.Status == s).Sum(x => x.Count);
+        int Ocr(OcrStatus s) => byOcr.Where(x => x.Status == s).Sum(x => x.Count);
+        return new DocumentStatusCounts(
+            byStatus.Sum(x => x.Count),
+            Status(DocumentStatus.Uploaded), Status(DocumentStatus.Processing),
+            Status(DocumentStatus.Ready), Status(DocumentStatus.Failed),
+            Ocr(OcrStatus.Queued), Ocr(OcrStatus.Processing), Ocr(OcrStatus.Failed),
+            needsReview);
+    }
+
     /// <summary>Documents sitting in one physical box (Phase 7), newest first.</summary>
     public Task<List<Document>> ListByPhysicalBoxAsync(Guid workspaceId, Guid boxId, CancellationToken ct = default)
         => _db.Documents
@@ -460,6 +482,13 @@ public class EfAuditRepository : IAuditRepository
 
     public Task<int> CountByUserAsync(string userId, string action, CancellationToken ct = default)
         => _db.AuditLogs.CountAsync(a => a.UserId == userId && a.Action == action, ct);
+
+    public Task<int> CountByActionSinceAsync(string action, DateTime since, CancellationToken ct = default)
+        => _db.AuditLogs.CountAsync(a => a.Action == action && a.CreatedAt >= since, ct);
+
+    public Task<AuditLog?> GetLatestByActionAsync(string action, CancellationToken ct = default)
+        => _db.AuditLogs.Where(a => a.Action == action)
+            .OrderByDescending(a => a.CreatedAt).FirstOrDefaultAsync(ct);
 }
 
 public class EfRefreshTokenRepository : IRefreshTokenRepository

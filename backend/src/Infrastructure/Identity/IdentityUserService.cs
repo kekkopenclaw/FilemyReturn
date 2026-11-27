@@ -1,6 +1,7 @@
 using DocuArchive.Domain;
 using DocuArchive.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocuArchive.Infrastructure.Identity;
 
@@ -56,6 +57,9 @@ public class IdentityUserService : IUserIdentityService
         }
         return (true, [], ToProfile(user));
     }
+
+    public Task<int> CountAllAsync(CancellationToken ct = default)
+        => _users.Users.CountAsync(ct);
 
     public async Task<SignInOutcome> CheckPasswordAsync(string email, string password, CancellationToken ct = default)
     {

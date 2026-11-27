@@ -199,3 +199,29 @@ public record BackupManifestDto(
     int BackupVersion, string Provider, DateTime GeneratedAtUtc,
     long DatabaseSizeBytes, int DocumentCount, int WorkspaceCount,
     int FileCount, long StorageSizeBytes);
+
+/// <summary>Document counts by status (Phase 9 monitoring). <c>Total</c> is every document in the system; the rest are the same documents split by processing status, OCR status, and the human-review queue.</summary>
+public record DocumentCountsDto(
+    int Total, int Uploaded, int Processing, int Ready, int Failed,
+    int OcrQueued, int OcrProcessing, int OcrFailed, int NeedsReview);
+
+/// <summary>
+/// System health snapshot (Phase 9 monitoring), served by GET /api/admin/monitoring
+/// to system administrators only. Read-only numbers about the running process —
+/// uptime, version, counts, storage, failed logins, last backup. No secrets,
+/// no user data, no per-workspace detail: an admin sees the whole system in
+/// aggregate and nothing else. <c>Commit</c> is the Render-supplied git SHA
+/// (<c>RENDER_GIT_COMMIT</c>) and is null when the app was not deployed from
+/// git that way (e.g. local runs). <c>LastBackupAtUtc</c> / <c>LastBackupDetails</c>
+/// come from the last <c>Backup.Downloaded</c> audit entry and are null when
+/// no backup has ever been downloaded — see docs/BACKUP.md.
+/// </summary>
+public record MonitoringStatusDto(
+    string Version, string? Commit, double UptimeSeconds,
+    string DatabaseProvider, long DatabaseSizeBytes,
+    int UserCount, int WorkspaceCount, int DocumentCount,
+    DocumentCountsDto DocumentsByStatus,
+    int FileCount, long StorageSizeBytes,
+    int FailedLoginsLast24h,
+    DateTime? LastBackupAtUtc, string? LastBackupDetails,
+    DateTime GeneratedAtUtc);

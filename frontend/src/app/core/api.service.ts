@@ -11,6 +11,7 @@ import {
   FilingRule,
   FilingRuleInput,
   MetadataInput,
+  MonitoringStatus,
   PhysicalBox,
   PhysicalBoxInput,
   SearchParams,
@@ -418,6 +419,18 @@ export class ApiService {
     return this.http.delete<DocumentSummary>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/physical-box`,
     );
+  }
+
+  // -- Monitoring (Phase 9) -------------------------------------------------
+
+  /**
+   * System health snapshot (system admins only): process uptime, app
+   * version/commit, database provider and size, counts, storage, failed
+   * logins in the last 24h, and when the last backup was downloaded.
+   * 403 when not a system admin.
+   */
+  getMonitoring(): Observable<MonitoringStatus> {
+    return this.http.get<MonitoringStatus>(`${this.baseUrl}/admin/monitoring`);
   }
 
   // -- Backup (Phase 8) ---------------------------------------------------

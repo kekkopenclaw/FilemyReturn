@@ -28,6 +28,7 @@
       <a routerLink="/audit-logs" routerLinkActive="active" ariaCurrentWhenActive="page">Audit log</a>
       @if (auth.currentUser()?.isSystemAdmin) {
         <a routerLink="/backup" routerLinkActive="active" ariaCurrentWhenActive="page">Backup</a>
+        <a routerLink="/monitoring" routerLinkActive="active" ariaCurrentWhenActive="page">Monitoring</a>
       }
       <a routerLink="/change-password" routerLinkActive="active" ariaCurrentWhenActive="page">Change password</a>
     </nav>
