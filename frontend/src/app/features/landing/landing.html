@@ -40,12 +40,12 @@
             <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
           </p>
           <p>No card required. Your documents stay on your own server.</p>
-          <p class="shoebox"><b>0</b> shoeboxes of paper</p>
+          <p class="shoebox" #shoebox><b>{{ shoeboxes() }}</b> shoeboxes of paper</p>
         </div>
 
         <div class="col-lg-6">
           <figure class="s-scene" id="demo" #demo aria-labelledby="demo-heading">
-            <figcaption id="demo-heading" class="demo-title">Watch me scan&nbsp;<span class="pill-label">Interactive preview — sample data</span></figcaption>
+            <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
             <div class="demo-grid">
               <div
                 class="scene"
@@ -97,6 +97,7 @@
                   <span class="chip chip-a" [class.revealed]="revealed() >= 1"><span class="chip-label">Vendor</span><span class="chip-value">Tesco Extra</span></span>
                   <span class="chip chip-b" [class.revealed]="revealed() >= 2"><span class="chip-label">Date</span><span class="chip-value">24 Nov 2026 · 18:42</span></span>
                   <span class="chip chip-c" [class.revealed]="revealed() >= 3"><span class="chip-label">Total</span><span class="chip-value">&pound;47.82</span></span>
+                  <span class="chip chip-d" [class.revealed]="revealed() >= 5"><span class="chip-label">Category</span><span class="chip-value">Groceries</span></span>
                   <span class="chip chip-e" [class.revealed]="revealed() >= 4"><span class="chip-label">Confidence</span><span class="chip-value">95.7%</span><span class="chip-bar" aria-hidden="true"><span [style.width.%]="(revealed() / 6) * 95.7"></span></span></span>
                 </div>
               </div>
@@ -193,20 +194,23 @@
       <p class="section-sub">From paper to searchable in seconds — no typing, no filing cabinet.</p>
       <div class="showcase-stage" #showcase>
         <div class="showcase-screen">
-          <div class="mini-receipt" [class.is-scanning]="showcasePhase() === 0" aria-hidden="true">
-            <p class="r-shop">TESCO EXTRA</p>
-            <p class="r-branch">82-88 High Street, London</p>
-            <ul class="r-items">
-              <li><span>Whole Milk 2.27L</span><span>&pound;1.85</span></li>
-              <li><span>Chicken Breast 600g</span><span>&pound;5.95</span></li>
-              <li><span>Cheddar Mature 350g</span><span>&pound;4.25</span></li>
-            </ul>
-            <p class="r-total"><span>TOTAL</span><span>&pound;47.82</span></p>
-            <div class="scan-line"></div>
-            @if (showcasePhase() >= 2) {
-              <p class="show-stamp">Category · Groceries</p>
-            }
-          </div>
+          <!-- The showcase is a REAL VIDEO of the scan demo above,
+               recorded from this page — not a second receipt. The hero
+               receipt is the only receipt on the page.
+               NOTE: muted/autoplay/loop must be PROPERTY bindings:
+               the plain `muted` attribute does not take effect on a
+               <video> created by Angular, so the video was unmuted and
+               autoplay was blocked (it sat paused). -->
+          <video
+            class="showcase-video"
+            src="assets/showcase-scan.webm"
+            [autoplay]="true"
+            [muted]="true"
+            [loop]="true"
+            [playsInline]="true"
+            preload="auto"
+            aria-label="Video of the DocuArchive scan demo: a Tesco receipt is read, categorised as Groceries and filed"
+          ></video>
           <div class="showcase-result">
             @if (showcasePhase() === 0) {
               <p class="show-line"><strong>Scanning…</strong> the receipt goes in — no typing, no scanner bed, just a photo.</p>
@@ -335,6 +339,34 @@
     </div>
   </section>
 
+  <!-- Expenses: scanned receipts become expenses you can claim. Sample
+       data — what anyone can actually claim depends on their situation,
+       so the page says so instead of giving tax advice. -->
+  <section class="section" id="expenses" aria-labelledby="expenses-heading">
+    <div class="container">
+      <h2 id="expenses-heading">Receipts in, expenses out</h2>
+      <p class="section-sub">Every scanned receipt becomes an expense, tagged and totalled — ready for your tax return, no spreadsheet.</p>
+      <div class="expense-strip">
+        <ul class="doc-list">
+          @for (expense of expenses; track expense.name) {
+            <li class="doc-row">
+              <span class="doc-name">{{ expense.name }}</span>
+              <span class="doc-kind">{{ expense.kind }} · {{ expense.date }}</span>
+              <span class="doc-amount">£{{ expense.amount.toFixed(2) }}</span>
+              @if (expense.claimable) {
+                <span class="badge badge-success">Claimable</span>
+              } @else {
+                <span class="badge">Personal</span>
+              }
+            </li>
+          }
+        </ul>
+        <p class="expense-total"><strong>{{ claimableTotalText() }}</strong> ready to claim on your tax return</p>
+        <p class="expense-note">Sample data. What you can claim depends on your situation — check with your accountant.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- Security -->
   <section class="section" id="security" aria-labelledby="security-heading">
     <div class="container">
@@ -366,7 +398,7 @@
   <!-- Final call to action -->
   <section class="cta-band" aria-labelledby="cta-heading">
     <div class="container">
-      <h2 id="cta-heading">Start filing in&nbsp;<span class="hero-accent">seconds.</span></h2>
+      <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
       <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
       <p>
         <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>

@@ -24,9 +24,13 @@ import { RouterLink } from '@angular/router';
  * order — Shop, Date, Total, VAT, Category, Filed to — then the receipt
  * is filed automatically. The scan LOOPS on its own (hold the filed state
  * a few seconds, then replay) — a visitor never has to click "Scan
- * again". The showcase below the hero plays the whole process
- * (scan → read → categorise → file → search) as a silent loop.
- * With reduced motion both animations skip straight to the filed state.
+ * again". The showcase below the hero is a REAL VIDEO of the scan demo
+ * (recorded with Playwright from this page, looping, muted, autoplay),
+ * with the step captions alongside. The dashboard glimpse is followed by
+ * a sample expenses strip: scanned receipts become expenses you can
+ * claim, with a claimable total (sample data only, with an accountant
+ * note — never tax advice). With reduced motion both animations skip
+ * straight to the filed state.
  *
  * The scene is 3D INTERACTIVE, not just animated: the receipt tilts with
  * the mouse on desktop and with the phone's gyro on mobile (iOS asks for
@@ -47,8 +51,27 @@ export class Landing implements AfterViewInit, OnDestroy {
   protected readonly status = signal(
     'Press "Scan this receipt" — the software reads the receipt live.',
   );
-  protected readonly rx = signal(-8);
-  protected readonly ry = signal(10);
+  protected readonly rx = signal(-10);
+  protected readonly ry = signal(14);
+  // "0 shoeboxes of paper": the count animates when it scrolls into
+  // view — shoeboxes empty into the archive, 9 down to 0 — so the stat
+  // is alive instead of a dead-looking 0. Reduced motion shows 0 at once.
+  protected readonly shoeboxes = signal(0);
+  // Sample expenses (the dashboard's sample documents, tagged): scanned
+  // receipts become expenses you can claim. Sample data only — what
+  // anyone can actually claim depends on their situation.
+  protected readonly expenses = [
+    { name: 'Plumber invoice', kind: 'Home repairs', date: '18 Nov 2026', amount: 86.0, claimable: true },
+    { name: 'Electricity bill', kind: 'Utilities', date: '12 Nov 2026', amount: 74.2, claimable: true },
+    { name: 'Tesco Extra receipt', kind: 'Groceries', date: '24 Nov 2026', amount: 47.82, claimable: false },
+    { name: 'The Corner Cafe receipt', kind: 'Eating out', date: '24 Nov 2026', amount: 18.4, claimable: false },
+  ];
+  protected readonly claimableTotal = computed(() =>
+    this.expenses.filter((e) => e.claimable).reduce((sum, e) => sum + e.amount, 0),
+  );
+  protected readonly claimableTotalText = computed(
+    () => `£${this.claimableTotal().toFixed(2)}`,
+  );
   // Pointer position over the scene (-0.5..0.5 each axis) — drives the
   // parallax layers (grid floor, orbit rings, HUD) at different rates.
   protected readonly px = signal(0);
@@ -99,11 +122,14 @@ export class Landing implements AfterViewInit, OnDestroy {
   private readonly glimpse = viewChild<ElementRef<HTMLElement>>('glimpse');
   private readonly showcase = viewChild<ElementRef<HTMLElement>>('showcase');
   private readonly demo = viewChild<ElementRef<HTMLElement>>('demo');
+  private readonly shoebox = viewChild<ElementRef<HTMLElement>>('shoebox');
   private observers: IntersectionObserver[] = [];
   private timers: ReturnType<typeof setTimeout>[] = [];
+  private shoeboxTimers: ReturnType<typeof setTimeout>[] = [];
   private showcaseTimers: ReturnType<typeof setTimeout>[] = [];
   private autoPlayed = false;
   private showcaseStarted = false;
+  private shoeboxStarted = false;
 
   ngAfterViewInit(): void {
     if (typeof IntersectionObserver === 'undefined') {
@@ -155,6 +181,27 @@ export class Landing implements AfterViewInit, OnDestroy {
       o.observe(showcaseEl);
       this.observers.push(o);
     }
+    // The shoebox stat counts down (9 → 0) the first time it scrolls
+    // into view. Reduced motion shows the final 0 with no animation.
+    const shoeboxEl = this.shoebox()?.nativeElement;
+    if (shoeboxEl) {
+      if (this.reducedMotion()) {
+        this.shoeboxes.set(0);
+      } else {
+        const o = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((e) => e.isIntersecting) && !this.shoeboxStarted) {
+              this.shoeboxStarted = true;
+              this.countShoeboxes();
+              o.disconnect();
+            }
+          },
+          { threshold: 0.5 },
+        );
+        o.observe(shoeboxEl);
+        this.observers.push(o);
+      }
+    }
     // Device tilt (phone gyro) drives the same 3D tilt as the mouse.
     // On iOS the listener only fires after the user grants motion
     // permission — enableGyro() requests it from a tap on the scene.
@@ -166,6 +213,7 @@ export class Landing implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.observers.forEach((o) => o.disconnect());
     this.timers.forEach((t) => clearTimeout(t));
+    this.shoeboxTimers.forEach((t) => clearTimeout(t));
     this.showcaseTimers.forEach((t) => clearTimeout(t));
     if (typeof window !== 'undefined') {
       window.removeEventListener('deviceorientation', this.onDeviceOrientation);
@@ -226,15 +274,15 @@ export class Landing implements AfterViewInit, OnDestroy {
     const r = el.getBoundingClientRect();
     const px = (event.clientX - r.left) / r.width - 0.5;
     const py = (event.clientY - r.top) / r.height - 0.5;
-    this.ry.set(Math.round(10 + px * 16));
-    this.rx.set(Math.round(-8 - py * 12));
+    this.ry.set(Math.round(14 + px * 24));
+    this.rx.set(Math.round(-10 - py * 18));
     this.px.set(Math.round(px * 100) / 100);
     this.py.set(Math.round(py * 100) / 100);
   }
 
   protected resetTilt(): void {
-    this.rx.set(-8);
-    this.ry.set(10);
+    this.rx.set(-10);
+    this.ry.set(14);
     this.px.set(0);
     this.py.set(0);
   }
@@ -262,11 +310,20 @@ export class Landing implements AfterViewInit, OnDestroy {
     }
     const gamma = Math.max(-30, Math.min(30, event.gamma));
     const beta = Math.max(25, Math.min(65, event.beta));
-    this.ry.set(Math.round(10 + gamma * 0.4));
-    this.rx.set(Math.round(-8 - (beta - 45) * 0.35));
+    this.ry.set(Math.round(14 + gamma * 0.5));
+    this.rx.set(Math.round(-10 - (beta - 45) * 0.45));
     this.px.set(Math.round((gamma / 30) * 50) / 100);
     this.py.set(Math.round(((beta - 45) / 20) * 50) / 100);
   };
+
+  /** Shoebox countdown: 9 → 0, one box every 150 ms, then it stays at 0. */
+  private countShoeboxes(): void {
+    this.shoeboxes.set(9);
+    for (let i = 8; i >= 0; i--) {
+      const value = i;
+      this.shoeboxTimers.push(setTimeout(() => this.shoeboxes.set(value), (9 - i) * 150));
+    }
+  }
 
   protected onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);

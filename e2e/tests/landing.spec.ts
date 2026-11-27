@@ -52,6 +52,51 @@ test.describe('landing page', () => {
     await expect(status).toContainText('Done. Filed and searchable', { timeout: 20_000 });
   });
 
+  test('showcase is a real video, expenses show claimable totals, and the text is not glued', async ({ page }) => {
+    await page.goto('/');
+
+    // The showcase plays a REAL video of the scan demo — a looping,
+    // muted, autoplaying <video>, not a static card. Scroll it into view
+    // first, the way a visitor reaches it.
+    const video = page.locator('.showcase-video');
+    await video.scrollIntoViewIfNeeded();
+    await expect(video).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          video.evaluate((el) => {
+            const v = el as HTMLVideoElement;
+            return { paused: v.paused, time: v.currentTime, ready: v.readyState };
+          }),
+        { timeout: 15_000 },
+      )
+      .toMatchObject({ paused: false, ready: expect.any(Number) });
+    const state = await video.evaluate((el) => {
+      const v = el as HTMLVideoElement;
+      return { paused: v.paused, time: v.currentTime, ready: v.readyState };
+    });
+    expect(state.paused).toBe(false);
+    expect(state.time).toBeGreaterThan(0);
+    expect(state.ready).toBeGreaterThanOrEqual(2);
+
+    // The page has ONE receipt: the hero Tesco receipt. The showcase
+    // holds the video, not a second static receipt.
+    await expect(page.getByText('TESCO EXTRA', { exact: true })).toHaveCount(1);
+
+    // Expenses strip: sample expenses with claimable flags and the total.
+    await expect(page.getByText('Receipts in, expenses out')).toBeVisible();
+    await expect(page.getByText('£160.20 ready to claim')).toBeVisible();
+    await expect(page.locator('.expense-strip').getByText('Claimable')).toHaveCount(2);
+    await expect(page.getByText('check with your accountant')).toBeVisible();
+
+    // The glued text is fixed with real spaces in the templates.
+    await expect(page.getByRole('heading', { name: 'Start filing in seconds.' })).toBeVisible();
+    const demoTitle = await page.locator('.demo-title').textContent();
+    expect(demoTitle).toContain('Watch me scan Interactive preview');
+    // No non-breaking space gluing the words together.
+    expect(demoTitle).not.toContain('\u00a0');
+  });
+
   test('login and register buttons go to real pages', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: 'Log in' }).first().click();
@@ -83,10 +128,25 @@ test.describe('landing page', () => {
     const started = page.getByRole('link', { name: 'Get started' }).first();
     const startedStyle = await started.evaluate((el) => {
       const cs = getComputedStyle(el);
-      return { bg: cs.backgroundColor, deco: cs.textDecorationLine };
+      return { bg: cs.backgroundColor, color: cs.color, deco: cs.textDecorationLine };
     });
     expect(startedStyle.bg).toBe('rgb(16, 26, 23)');
     expect(startedStyle.deco).toBe('none');
+    // White text on the dark pill — the old dark-green-on-black was
+    // unreadable (the component's `a{color}` rule outranked the global
+    // button colour until it was scoped to `a:not(.btn)`).
+    expect(startedStyle.color).toBe('rgb(255, 255, 255)');
+
+    // The final call-to-action button has the same fix: dark ink text
+    // on the green pill, white text on the dark one.
+    const cta = page.getByRole('link', { name: 'Get started', exact: true }).last();
+    await cta.scrollIntoViewIfNeeded();
+    const ctaStyle = await cta.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, color: cs.color };
+    });
+    expect(ctaStyle.bg).toBe('rgb(14, 124, 102)');
+    expect(ctaStyle.color).toBe('rgb(255, 255, 255)');
 
     // The receipt has the serrated torn edge top and bottom.
     const receipt = page.locator('.receipt');
@@ -130,5 +190,41 @@ test.describe('landing page', () => {
     await page.waitForTimeout(1500);
     const y2 = await receipt.evaluate((el) => el.getBoundingClientRect().y);
     expect(Math.abs(y2 - y1)).toBeGreaterThan(2);
+
+    // All five chips are FULLY visible around the receipt — in front of
+    // it (not hidden behind), and fully inside the phone viewport (not
+    // cut off at the screen edges). Scroll the whole scene into view
+    // first: the test scrolled to the call-to-action earlier, and chips
+    // below the fold would (correctly) fail the in-viewport check.
+    await page.locator('.scene').scrollIntoViewIfNeeded();
+    const chips = await page.evaluate(() => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      return ['.chip-a', '.chip-b', '.chip-c', '.chip-d', '.chip-e'].map((sel) => {
+        const el = document.querySelector(sel) as HTMLElement;
+        const r = el.getBoundingClientRect();
+        const cx = r.x + r.width / 2;
+        const cy = r.y + r.height / 2;
+        const top = document.elementFromPoint(cx, cy);
+        return {
+          sel,
+          inViewport: r.x >= 0 && r.y >= 0 && r.x + r.width <= vw && r.y + r.height <= vh,
+          onTop: !!top && (top === el || el.contains(top as Node)),
+        };
+      });
+    });
+    for (const chip of chips) {
+      expect(chip.inViewport, `${chip.sel} inside the viewport`).toBe(true);
+      expect(chip.onTop, `${chip.sel} on top of the receipt`).toBe(true);
+    }
+
+    // No horizontal overflow on a phone: nothing is cut off at the edges.
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    );
+    expect(overflow).toBe(true);
+
+    // The shoebox stat counts down to 0 when it scrolls into view.
+    await expect(page.locator('.shoebox')).toContainText('0 shoeboxes of paper', { timeout: 5_000 });
   });
 });

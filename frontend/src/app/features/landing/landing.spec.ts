@@ -20,6 +20,9 @@ describe('Landing', () => {
     ry: () => number;
     px: () => number;
     py: () => number;
+    shoeboxes: () => number;
+    claimableTotalText: () => string;
+    expenses: { name: string; claimable: boolean }[];
     scan: () => void;
     onTilt: (event: MouseEvent) => void;
     onDeviceOrientation: (event: {
@@ -44,9 +47,17 @@ describe('Landing', () => {
     });
   };
 
+  // The mock reports "in view" the moment anything is observed — the
+  // way a real observer fires for an element already on screen.
   const mockIntersectionObserver = (): void => {
     class IntersectionObserverMock {
-      observe(): void {}
+      private readonly cb: (entries: { isIntersecting: boolean }[]) => void;
+      constructor(cb: (entries: { isIntersecting: boolean }[]) => void) {
+        this.cb = cb;
+      }
+      observe(): void {
+        this.cb([{ isIntersecting: true }]);
+      }
       unobserve(): void {}
       disconnect(): void {}
     }
@@ -149,10 +160,11 @@ describe('Landing', () => {
           y: 0,
           toJSON: () => ({}),
         }) as DOMRect;
-      // Pointer at the top-right corner of the scene.
+      // Pointer at the top-right corner of the scene: base tilt
+      // (-10, 14) plus the full pointer range.
       landing.onTilt(new MouseEvent('mousemove', { clientX: 400, clientY: 0 }));
-      expect(landing.ry()).toBe(18);
-      expect(landing.rx()).toBe(-2);
+      expect(landing.ry()).toBe(26);
+      expect(landing.rx()).toBe(-1);
       expect(landing.px()).toBe(0.5);
       expect(landing.py()).toBe(-0.5);
     });
@@ -161,13 +173,44 @@ describe('Landing', () => {
   it('phone gyro tilt moves the receipt the same way as the mouse', () => {
     return create().then((landing) => {
       landing.onDeviceOrientation({ gamma: 30, beta: 65 });
-      expect(landing.ry()).toBe(22);
-      expect(landing.rx()).toBe(-15);
+      expect(landing.ry()).toBe(29);
+      expect(landing.rx()).toBe(-19);
       expect(landing.px()).toBe(0.5);
       expect(landing.py()).toBe(0.5);
       // A null reading is ignored — the tilt stays where it was.
       landing.onDeviceOrientation({ gamma: null, beta: null });
-      expect(landing.ry()).toBe(22);
+      expect(landing.ry()).toBe(29);
+    });
+  });
+
+  it('shoebox counter counts down to 0 when it scrolls into view', () => {
+    return create().then((landing) => {
+      // In view on load, so the countdown starts at once: 9, then one
+      // box every 150 ms until it lands on 0 and stays there.
+      expect(landing.shoeboxes()).toBe(9);
+      vi.advanceTimersByTime(150);
+      expect(landing.shoeboxes()).toBe(8);
+      vi.advanceTimersByTime(1200);
+      expect(landing.shoeboxes()).toBe(0);
+      vi.advanceTimersByTime(5000);
+      expect(landing.shoeboxes()).toBe(0);
+    });
+  });
+
+  it('with reduced motion the shoebox counter shows 0 with no animation', () => {
+    mockMatchMedia(true);
+    return create().then((landing) => {
+      expect(landing.shoeboxes()).toBe(0);
+    });
+  });
+
+  it('expenses strip totals only the claimable sample expenses', () => {
+    return create().then((landing) => {
+      expect(landing.expenses.length).toBe(4);
+      expect(landing.expenses.filter((e) => e.claimable).length).toBe(2);
+      // Plumber £86.00 + electricity £74.20; groceries and eating out
+      // are personal, not claimable.
+      expect(landing.claimableTotalText()).toBe('£160.20');
     });
   });
 });
