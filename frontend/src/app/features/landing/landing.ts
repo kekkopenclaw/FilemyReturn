@@ -61,6 +61,16 @@ export class Landing implements AfterViewInit, OnDestroy {
     this.timers.forEach((timer) => clearTimeout(timer));
   }
 
+  /** Hero button: scroll to the demo and run the scan. */
+  protected watchScan(): void {
+    const el = this.demo()?.nativeElement;
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    this.scan();
+  }
+
   protected scan(): void {
     if (this.scanning()) {
       return;
