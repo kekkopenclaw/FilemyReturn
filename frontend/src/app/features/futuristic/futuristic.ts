@@ -16,8 +16,15 @@ import { RouterLink } from '@angular/router';
  * out in sync, and a dashboard glimpse flattens on scroll with a working
  * search over sample documents. Pure CSS/JS 3D, no libraries.
  *
- * The receipt is the real one from the live OCR test: The Corner Cafe,
- * 24 November 2026, £18.40, confidence 95.7%.
+ * Copy matches the live landing verbatim (Francesco's verdict, 2026-11-27):
+ * the TESCO receipt demo, "Done — filed as Groceries, ready to search.",
+ * and the scan makes it explicit the software is READING, producing the
+ * fields automatically — Vendor, Date, Total, Category, Confidence.
+ *
+ * The receipt is the OLD demo's Tesco Extra receipt (Francesco's
+ * correction, 2026-11-27 — the £14.85 figure is superseded): Tesco Extra,
+ * 24 November 2026 18:42, £47.82, VAT £4.18, Card ****4821, Groceries,
+ * confidence 95.7%, filed to Expenses / Nov 2026 / Groceries.
  */
 @Component({
   imports: [RouterLink],
@@ -30,15 +37,18 @@ export class Futuristic implements AfterViewInit, OnDestroy {
   protected readonly done = signal(false);
   protected readonly revealed = signal(0);
   protected readonly status = signal(
-    'Press "Watch it scan" — the software reads the receipt live.',
+    'Press "Scan this receipt" — the software reads the receipt live.',
   );
   protected readonly rx = signal(-8);
   protected readonly ry = signal(10);
   protected readonly dashboardFlat = signal(false);
   protected readonly query = signal('');
+  protected readonly filter = signal('All');
+
+  protected readonly filters = ['All', 'Ready', 'Processing', 'Awaiting OCR'];
 
   protected readonly docs = [
-    { name: 'Tesco receipt', kind: 'Groceries', date: '24 Nov 2026', amount: '£14.85', state: 'Ready' },
+    { name: 'Tesco Extra receipt', kind: 'Groceries', date: '24 Nov 2026', amount: '£47.82', state: 'Ready' },
     { name: 'The Corner Cafe receipt', kind: 'Eating out', date: '24 Nov 2026', amount: '£18.40', state: 'Ready' },
     { name: 'Plumber invoice', kind: 'Home', date: '18 Nov 2026', amount: '£86.00', state: 'Ready' },
     { name: 'Electricity bill', kind: 'Utilities', date: '12 Nov 2026', amount: '£74.20', state: 'Awaiting OCR' },
@@ -47,18 +57,19 @@ export class Futuristic implements AfterViewInit, OnDestroy {
 
   protected readonly filteredDocs = computed(() => {
     const q = this.query().trim().toLowerCase();
-    if (!q) {
-      return this.docs;
-    }
-    return this.docs.filter((d) =>
-      `${d.name} ${d.kind} ${d.date} ${d.amount} ${d.state}`
-        .toLowerCase()
-        .includes(q),
-    );
+    const f = this.filter();
+    return this.docs.filter((d) => {
+      const matchesFilter = f === 'All' || d.state === f;
+      const matchesQuery =
+        !q ||
+        `${d.name} ${d.kind} ${d.date} ${d.amount} ${d.state}`
+          .toLowerCase()
+          .includes(q);
+      return matchesFilter && matchesQuery;
+    });
   });
 
   private readonly scene = viewChild<ElementRef<HTMLElement>>('scene');
-  private readonly demo = viewChild<ElementRef<HTMLElement>>('demo');
   private readonly glimpse = viewChild<ElementRef<HTMLElement>>('glimpse');
   private observers: IntersectionObserver[] = [];
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -106,16 +117,6 @@ export class Futuristic implements AfterViewInit, OnDestroy {
     this.timers.forEach((t) => clearTimeout(t));
   }
 
-  /** Hero button: scroll to the scene and run the scan. */
-  protected watchScan(): void {
-    const el = this.demo()?.nativeElement;
-    el?.scrollIntoView({
-      behavior: this.reducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    });
-    this.scan();
-  }
-
   protected scan(): void {
     if (this.scanning()) {
       return;
@@ -125,19 +126,29 @@ export class Futuristic implements AfterViewInit, OnDestroy {
     this.scanning.set(true);
     this.done.set(false);
     this.revealed.set(0);
-    this.status.set('Scanning — reading the receipt…');
+    this.status.set('Reading the receipt…');
 
     if (this.reducedMotion()) {
       this.finish();
       return;
     }
 
-    this.later(1200, () => this.status.set('Reading — shop found.'));
+    // The scan must make it clear the software is READING: each field is
+    // announced as it is read off the receipt, in order, ending with the
+    // category — then the receipt is filed automatically.
+    this.later(1200, () => this.status.set('Reading — shop found: Tesco Extra.'));
     this.later(1400, () => this.revealed.set(1));
-    this.later(1800, () => this.revealed.set(2));
-    this.later(2200, () => this.revealed.set(3));
-    this.later(2600, () => this.revealed.set(4));
-    this.later(3000, () => this.finish());
+    this.later(1800, () => this.status.set('Reading — date found: 24 Nov 2026, 18:42.'));
+    this.later(2000, () => this.revealed.set(2));
+    this.later(2400, () => this.status.set('Reading — total found: £47.82.'));
+    this.later(2600, () => this.revealed.set(3));
+    this.later(3000, () => this.status.set('Reading — category: Groceries.'));
+    this.later(3200, () => this.revealed.set(4));
+    this.later(3600, () => this.revealed.set(5));
+    this.later(3800, () =>
+      this.status.set('Reading — VAT £4.18. Filing to Expenses / Nov 2026 / Groceries…'),
+    );
+    this.later(4200, () => this.finish());
   }
 
   /** Mouse parallax on the 3D scene — skipped with reduced motion. */
@@ -165,11 +176,17 @@ export class Futuristic implements AfterViewInit, OnDestroy {
     this.query.set((event.target as HTMLInputElement).value);
   }
 
+  protected setFilter(value: string): void {
+    this.filter.set(value);
+  }
+
   private finish(): void {
-    this.revealed.set(4);
+    this.revealed.set(5);
     this.scanning.set(false);
     this.done.set(true);
-    this.status.set('Done — filed as Eating out, ready to search.');
+    this.status.set(
+      'Done. Filed and searchable — try searching "Tesco" in the dashboard below.',
+    );
   }
 
   private later(ms: number, fn: () => void): void {
