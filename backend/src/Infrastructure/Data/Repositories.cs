@@ -1,3 +1,4 @@
+using DocuArchive.Application;
 using DocuArchive.Domain;
 using DocuArchive.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,23 @@ public class EfWorkspaceRepository : IWorkspaceRepository
         _db.WorkspaceMemberships.Add(membership);
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task RemoveMembershipAsync(Guid workspaceId, string userId, CancellationToken ct = default)
+    {
+        var membership = await GetMembershipAsync(workspaceId, userId, ct);
+        if (membership is null) return;
+        _db.WorkspaceMemberships.Remove(membership);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateMembershipAsync(WorkspaceMembership membership, CancellationToken ct = default)
+    {
+        _db.WorkspaceMemberships.Update(membership);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public Task<int> CountOwnersAsync(Guid workspaceId, CancellationToken ct = default)
+        => _db.WorkspaceMemberships.CountAsync(m => m.WorkspaceId == workspaceId && m.Role == WorkspaceRole.WorkspaceOwner, ct);
 
     public async Task DeleteAsync(Workspace workspace, CancellationToken ct = default)
     {
@@ -75,7 +93,19 @@ public class EfDocumentRepository : IDocumentRepository
     public async Task<Document> AddAsync(Document document, CancellationToken ct = default)
     {
         _db.Documents.Add(document);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // RACE: two identical uploads passed the duplicate pre-check at the same time and
+            // the unique index (WorkspaceId, Sha256Hash) rejected the second insert. That is a
+            // duplicate (409), not a server error — translate it; anything else rethrows.
+            var duplicate = await GetByHashAsync(document.WorkspaceId, document.Sha256Hash, ct);
+            if (duplicate is not null) throw new DuplicateDocumentException(duplicate.Id, duplicate.OriginalFileName);
+            throw;
+        }
         return document;
     }
 
@@ -174,5 +204,13 @@ public class EfRefreshTokenRepository : IRefreshTokenRepository
     {
         token.RevokedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task RevokeAllForUserAsync(string userId, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        await _db.RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedAt, now), ct);
     }
 }
