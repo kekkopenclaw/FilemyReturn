@@ -34,6 +34,15 @@
       <span class="stat-label">Awaiting OCR</span>
     </article>
     <article class="stat-card">
+      <span class="stat-value">{{ stats.awaitingReview }}</span>
+      <span class="stat-label">Needs review</span>
+      @if (stats.awaitingReview > 0) {
+        <a [routerLink]="['/documents']" [queryParams]="{ review: 'true' }"
+          >Review {{ stats.awaitingReview }} document{{ stats.awaitingReview === 1 ? '' : 's' }} →</a
+        >
+      }
+    </article>
+    <article class="stat-card">
       <span class="stat-value">{{ stats.memberCount }}</span>
       <span class="stat-label">Members</span>
     </article>
