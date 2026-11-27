@@ -1,187 +1,373 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
-<header class="landing-topbar">
+<header class="c-topbar">
   <a class="brand" routerLink="/" aria-label="DocuArchive home">
-    <span class="brand-mark" aria-hidden="true">D</span>
-    <span class="brand-name">DocuArchive</span>
+    <span class="b-mark" aria-hidden="true">D</span>
+    <span class="b-name">DocuArchive</span>
   </a>
-  <nav class="topbar-nav" aria-label="Landing page sections">
-    <a href="#demo">Live demo</a>
+  <nav class="t-nav" aria-label="Landing page sections">
+    <a href="#demo">Live scan</a>
+    <a href="#showcase">Showcase</a>
     <a href="#how">How it works</a>
     <a href="#dashboard">Dashboard</a>
     <a href="#security">Security</a>
   </nav>
-  <div class="topbar-actions">
+  <div class="t-actions">
     <a class="btn btn-ghost" routerLink="/login">Log in</a>
     <a class="btn btn-primary" routerLink="/register">Get started</a>
   </div>
 </header>
 
 <main id="main-content">
-  <!-- Hero -->
+  <!-- Hero + 3D scan scene -->
   <section class="hero" aria-labelledby="hero-heading">
-    <div class="hero-inner">
-      <div class="hero-copy">
-        <p class="eyebrow">Secure document digitisation &amp; archive management</p>
-        <h1 id="hero-heading">
-          Lost a receipt again?<br />
-          <span class="hero-accent">Scan it. Done.</span>
-        </h1>
-        <p class="hero-sub">
-          DocuArchive reads your receipts and documents — the date, the shop,
-          the amount — categorises them, files them, and finds them in seconds
-          when you search.
-        </p>
-        <p class="hero-ctas">
-          <button class="btn btn-accent btn-large" type="button" (click)="watchScan()">Watch it scan a receipt</button>
-          <a class="btn btn-primary btn-large" routerLink="/register">Get started — it&rsquo;s free</a>
-          <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
-        </p>
-        <p class="hero-note">No card required. Your documents stay on your own server.</p>
-      </div>
-
-      <!-- Interactive scan demo: a sample Tesco receipt. The scan line
-           sweeps over it, then the extracted fields appear one by one. -->
-      <figure class="scan-demo" id="demo" #demo aria-labelledby="demo-heading">
-        <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
-        <div class="demo-stage" [class.is-scanning]="scanning()" [class.is-done]="done()">
-          <div class="receipt-card">
-            <div class="receipt" aria-hidden="true">
-              <p class="receipt-shop">TESCO</p>
-              <p class="receipt-branch">Tesco Superstore · London</p>
-              <p class="receipt-date">24 November 2026</p>
-              <ul class="receipt-items">
-                <li><span>Semi-Skimmed Milk 2L</span><span>&pound;1.20</span></li>
-                <li><span>Wholemeal Bread 800g</span><span>&pound;1.10</span></li>
-                <li><span>Bananas 5pk</span><span>&pound;0.95</span></li>
-                <li><span>Chicken Breast 600g</span><span>&pound;4.50</span></li>
-                <li><span>Coffee Beans 200g</span><span>&pound;5.25</span></li>
-                <li><span>Gala Apples 4pk</span><span>&pound;1.85</span></li>
-              </ul>
-              <p class="receipt-total"><span>Total</span><span>&pound;14.85</span></p>
-              <div class="scan-line" aria-hidden="true"></div>
-            </div>
-          </div>
-          <div class="demo-extracted">
-            <p class="demo-status" role="status">{{ status() }}</p>
-            <dl class="extracted">
-              <div [class.revealed]="revealed() >= 1">
-                <dt>Shop</dt>
-                <dd>TESCO <span class="tick" aria-hidden="true">&#10003;</span></dd>
-              </div>
-              <div [class.revealed]="revealed() >= 2">
-                <dt>Date</dt>
-                <dd>24 November 2026 <span class="tick" aria-hidden="true">&#10003;</span></dd>
-              </div>
-              <div [class.revealed]="revealed() >= 3">
-                <dt>Total</dt>
-                <dd>&pound;14.85 <span class="tick" aria-hidden="true">&#10003;</span></dd>
-              </div>
-              <div [class.revealed]="revealed() >= 4">
-                <dt>Category</dt>
-                <dd>Groceries <span class="tick" aria-hidden="true">&#10003;</span></dd>
-              </div>
-            </dl>
-          </div>
+    <div class="container">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <p class="pill-label">SECURE DOCUMENT DIGITISATION &amp; ARCHIVE MANAGEMENT</p>
+          <h1 id="hero-heading">
+            Lost a receipt again?<br />
+            <span class="hero-accent">Scan it. Done.</span>
+          </h1>
+          <p class="hero-sub">
+            DocuArchive reads your receipts and documents — the date, the
+            shop, the amount — categorises them, files them, and finds them
+            in seconds when you search.
+          </p>
+          <p class="hero-ctas">
+            <button class="btn btn-accent btn-large" type="button" (click)="watchScan()">Watch it scan a receipt</button>
+            <a class="btn btn-primary btn-large" routerLink="/register">Get started — it&rsquo;s free</a>
+            <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
+          </p>
+          <p>No card required. Your documents stay on your own server.</p>
+          <p class="shoebox"><b>0</b> shoeboxes of paper</p>
         </div>
-        <button class="btn btn-accent btn-block" type="button" (click)="scan()" [disabled]="scanning()">
-          @if (scanning()) {
-            Scanning…
-          } @else if (done()) {
-            Scan it again
-          } @else {
-            Scan this receipt
-          }
-        </button>
-        <p class="demo-note">Demo data — your live dashboard reads your real receipts.</p>
-      </figure>
+
+        <div class="col-lg-6">
+          <figure class="s-scene" id="demo" #demo aria-labelledby="demo-heading">
+            <figcaption id="demo-heading" class="demo-title">Watch me scan <span class="pill-label">Interactive preview — sample data</span></figcaption>
+            <div class="demo-grid">
+              <div
+                class="scene"
+                #scene
+                [class.is-scanning]="scanning()"
+                [class.is-done]="done()"
+                (mousemove)="onTilt($event)"
+                (mouseleave)="resetTilt()"
+              >
+                <div class="grid-floor" aria-hidden="true"></div>
+                <div class="orbit-wrap ring-a-wrap" aria-hidden="true"><div class="orbit-ring ring-a"></div></div>
+                <div class="orbit-wrap ring-b-wrap" aria-hidden="true"><div class="orbit-ring ring-b"></div></div>
+                <div
+                  class="s-receipt"
+                  [style.--rx]="rx() + 'deg'"
+                  [style.--ry]="ry() + 'deg'"
+                >
+                  <!-- Tall narrow thermal Tesco receipt (sample data). The
+                       real data lives in the extraction panel beside it. -->
+                  <div class="receipt" aria-hidden="true">
+                    <p class="r-shop">TESCO EXTRA</p>
+                    <p class="r-branch">82-88 High Street, London</p>
+                    <p class="r-vat">VAT GB 220 4302 31</p>
+                    <ul class="r-items">
+                      <li><span>Whole Milk 2.27L</span><span>&pound;1.85</span></li>
+                      <li><span>Sourdough Loaf</span><span>&pound;2.40</span></li>
+                      <li><span>Chicken Breast 600g</span><span>&pound;5.95</span></li>
+                      <li><span>Free-range Eggs x12</span><span>&pound;3.60</span></li>
+                      <li><span>Cheddar Mature 350g</span><span>&pound;4.25</span></li>
+                      <li><span>Orange Juice 1L</span><span>&pound;2.10</span></li>
+                      <li><span>Kitchen Towels</span><span>&pound;3.99</span></li>
+                      <li class="r-more"><span>... + 14 items</span><span>&pound;23.68</span></li>
+                    </ul>
+                    <p class="r-total"><span>TOTAL</span><span>&pound;47.82</span></p>
+                    <p class="r-vatline"><span>VAT included</span><span>&pound;4.18</span></p>
+                    <p class="r-card">Card ****4821 &mdash; 24/11/2026 18:42</p>
+                    <div class="r-barcode" aria-hidden="true"></div>
+                    <div class="scan-line" aria-hidden="true"></div>
+                  </div>
+                </div>
+                <div
+                  class="chips"
+                  aria-label="Extracted from the receipt"
+                  [style.transform]="'rotateX(' + (rx() * 0.3) + 'deg) rotateY(' + (ry() * 0.3) + 'deg)'"
+                >
+                  <span class="chip chip-a" [class.revealed]="revealed() >= 1"><span class="chip-label">Vendor</span><span class="chip-value">Tesco Extra</span></span>
+                  <span class="chip chip-b" [class.revealed]="revealed() >= 2"><span class="chip-label">Date</span><span class="chip-value">24 Nov 2026 · 18:42</span></span>
+                  <span class="chip chip-c" [class.revealed]="revealed() >= 3"><span class="chip-label">Total</span><span class="chip-value">&pound;47.82</span></span>
+                  <span class="chip chip-e" [class.revealed]="revealed() >= 4"><span class="chip-label">Confidence</span><span class="chip-value">95.7%</span><span class="chip-bar" aria-hidden="true"><span [style.width.%]="(revealed() / 6) * 95.7"></span></span></span>
+                </div>
+              </div>
+
+              <div class="demo-extracted">
+                <h3 class="extract-title">What DocuArchive extracts</h3>
+                <p class="demo-status" role="status">{{ status() }}</p>
+                <dl class="extracted">
+                  <div [class.revealed]="revealed() >= 1">
+                    <dt>Shop</dt>
+                    <dd>Tesco Extra <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                  <div [class.revealed]="revealed() >= 2">
+                    <dt>Date</dt>
+                    <dd>24 Nov 2026 &middot; 18:42 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                  <div [class.revealed]="revealed() >= 3">
+                    <dt>Total</dt>
+                    <dd>&pound;47.82 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                  <div [class.revealed]="revealed() >= 4">
+                    <dt>VAT</dt>
+                    <dd>&pound;4.18 <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                  <div [class.revealed]="revealed() >= 5">
+                    <dt>Category</dt>
+                    <dd><span class="cat-pill">Groceries</span> <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                  <div [class.revealed]="revealed() >= 6">
+                    <dt>Filed to</dt>
+                    <dd class="filed-to">Expenses / Nov 2026 / Groceries <span class="tick" aria-hidden="true">&#10003;</span></dd>
+                  </div>
+                </dl>
+                <div class="extract-progress" aria-hidden="true">
+                  <span [style.width.%]="(revealed() / 6) * 100"></span>
+                </div>
+                <button class="btn btn-dark btn-block" type="button" (click)="scan()" [disabled]="scanning()">
+                  @if (scanning()) {
+                    Reading…
+                  } @else if (done()) {
+                    Scan this receipt again
+                  } @else {
+                    Scan this receipt
+                  }
+                </button>
+              </div>
+            </div>
+            <div class="pill-row">
+              @if (done()) {
+                <span class="filed-pill">Filed to archive &#10003;</span>
+              }
+              <button class="btn btn-accent" type="button" (click)="scan()" [disabled]="scanning()">
+                @if (scanning()) {
+                  Reading…
+                } @else {
+                  Scan again
+                }
+              </button>
+            </div>
+            <div class="hud">
+              <div class="hud-row">
+                <span class="hud-eng">OCR ENGINE · TESSERACT · CPU-ONLY</span>
+                <span class="hud-st">
+                  @if (scanning()) {
+                    Reading…
+                  } @else if (done()) {
+                    Filed to archive ✓
+                  } @else {
+                    Ready
+                  }
+                </span>
+              </div>
+              <div class="meter" aria-hidden="true">
+                <span class="meter-fill" [style.width.%]="(revealed() / 6) * 95.7"></span>
+              </div>
+              <p class="hud-conf">Confidence {{ revealed() >= 6 ? '95.7%' : '—' }}</p>
+            </div>
+            <p class="demo-note">Demo data — your live dashboard reads your real receipts.</p>
+          </figure>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- How it works -->
-  <section class="section" id="how" aria-labelledby="how-heading">
-    <h2 id="how-heading">How it works</h2>
-    <p class="section-sub">Three steps. No filing cabinet, no spreadsheet, no lost paper.</p>
-    <ol class="steps">
-      <li>
-        <span class="step-number" aria-hidden="true">1</span>
-        <h3>Scan</h3>
-        <p>Upload a receipt or document, or snap a photo of it. Duplicates are spotted automatically.</p>
-      </li>
-      <li>
-        <span class="step-number" aria-hidden="true">2</span>
-        <h3>The software reads it</h3>
-        <p>Date, shop, amount and category are pulled out of the document for you — no typing.</p>
-      </li>
-      <li>
-        <span class="step-number" aria-hidden="true">3</span>
-        <h3>Filed &amp; searchable</h3>
-        <p>It lands in your workspace, organised and ready. Search &ldquo;plumber&rdquo; and find it in seconds.</p>
-      </li>
-      <li>
-        <span class="step-number" aria-hidden="true">4</span>
-        <h3>Share it safely</h3>
-        <p>Workspaces and roles decide who can see, edit or manage each document — with a full audit trail.</p>
-      </li>
-    </ol>
+  <!-- Showcase: the whole process, playing like a video -->
+  <section class="section showcase" id="showcase" aria-labelledby="showcase-heading">
+    <div class="container">
+      <h2 id="showcase-heading">Watch the process, end to end</h2>
+      <p class="section-sub">From paper to searchable in seconds — no typing, no filing cabinet.</p>
+      <div class="showcase-stage" #showcase>
+        <div class="showcase-screen">
+          <div class="mini-receipt" [class.is-scanning]="showcasePhase() === 0" aria-hidden="true">
+            <p class="r-shop">TESCO EXTRA</p>
+            <p class="r-branch">82-88 High Street, London</p>
+            <ul class="r-items">
+              <li><span>Whole Milk 2.27L</span><span>&pound;1.85</span></li>
+              <li><span>Chicken Breast 600g</span><span>&pound;5.95</span></li>
+              <li><span>Cheddar Mature 350g</span><span>&pound;4.25</span></li>
+            </ul>
+            <p class="r-total"><span>TOTAL</span><span>&pound;47.82</span></p>
+            <div class="scan-line"></div>
+            @if (showcasePhase() >= 2) {
+              <p class="show-stamp">Category · Groceries</p>
+            }
+          </div>
+          <div class="showcase-result">
+            @if (showcasePhase() === 0) {
+              <p class="show-line"><strong>Scanning…</strong> the receipt goes in — no typing, no scanner bed, just a photo.</p>
+            }
+            @if (showcasePhase() === 1) {
+              <p class="show-line"><strong>Reading…</strong> shop Tesco Extra · 24 Nov 2026 · total £47.82 · VAT £4.18.</p>
+            }
+            @if (showcasePhase() === 2) {
+              <p class="show-line"><strong>Categorised.</strong> Filed as Groceries — the category is worked out for you.</p>
+            }
+            @if (showcasePhase() === 3) {
+              <p class="show-line"><strong>Filed.</strong> Into Expenses / Nov 2026 / Groceries, with the original kept safe.</p>
+            }
+            @if (showcasePhase() === 4) {
+              <p class="show-line"><strong>Found.</strong> Search “Tesco” and it is there in 0.4 seconds.</p>
+              <p class="show-search"><span class="show-q">tesco</span><span class="show-hit">Tesco Extra receipt · £47.82 · 0.4s</span></p>
+            }
+          </div>
+        </div>
+        <p class="showcase-caption">
+          <span class="showcase-step">Step {{ showcasePhase() + 1 }} of 5 — {{ showcaseCurrent().title }}</span>
+          {{ showcaseCurrent().text }}
+        </p>
+        <div class="showcase-progress" aria-hidden="true">
+          @for (p of showcasePhases; track p.title; let i = $index) {
+            <span [class.on]="i <= showcasePhase()"></span>
+          }
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- Dashboard preview -->
-  <section class="section section-muted" id="dashboard" aria-labelledby="dashboard-heading">
-    <h2 id="dashboard-heading">Your archive, at a glance</h2>
-    <p class="section-sub">Sign in and your dashboard shows the state of every document you own.</p>
-    <div class="dashboard-shell" aria-label="Example dashboard">
-      <p class="filter-chips" aria-label="Example filters">
-        <span class="filter-chip active">All documents</span>
-        <span class="filter-chip">Ready</span>
-        <span class="filter-chip">Processing</span>
-        <span class="filter-chip">Awaiting OCR</span>
-      </p>
-      <div class="dashboard-preview">
-        <div class="preview-stat"><span class="preview-value">128</span><span class="preview-label">Total documents</span></div>
-        <div class="preview-stat"><span class="preview-value">121</span><span class="preview-label">Ready</span></div>
-        <div class="preview-stat"><span class="preview-value">4</span><span class="preview-label">Processing</span></div>
-        <div class="preview-stat"><span class="preview-value">3</span><span class="preview-label">Awaiting OCR</span></div>
-        <div class="preview-stat"><span class="preview-value">2</span><span class="preview-label">Members</span></div>
-        <div class="preview-stat"><span class="preview-value">6</span><span class="preview-label">Archives</span></div>
+  <!-- How it works: 3D tilt cards -->
+  <section class="section" id="how" aria-labelledby="how-heading">
+    <div class="container">
+      <h2 id="how-heading">How it works</h2>
+      <p class="section-sub">Three steps. No filing cabinet, no spreadsheet, no lost paper.</p>
+      <div class="row g-4">
+        <div class="col-lg-3 col-md-6">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">1</span>
+            <h3>Scan</h3>
+            <p>Upload a receipt or document, or snap a photo of it. Duplicates are spotted automatically.</p>
+          </article>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">2</span>
+            <h3>The software reads it</h3>
+            <p>Date, shop, amount and category are pulled out of the document for you — no typing.</p>
+          </article>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">3</span>
+            <h3>Filed &amp; searchable</h3>
+            <p>It lands in your workspace, organised and ready. Search &ldquo;plumber&rdquo; and find it in seconds.</p>
+          </article>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <article class="tilt-card">
+            <span class="step-number" aria-hidden="true">4</span>
+            <h3>Share it safely</h3>
+            <p>Workspaces and roles keep home and business separate, with a full audit trail.</p>
+          </article>
+        </div>
       </div>
-      <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
-      <p><a class="btn btn-primary" routerLink="/register">Create your archive</a></p>
+    </div>
+  </section>
+
+  <!-- Dashboard glimpse: tilts flat on scroll, working search -->
+  <section class="section section-muted" id="dashboard" aria-labelledby="dashboard-heading">
+    <div class="container">
+      <h2 id="dashboard-heading">Your archive, at a glance</h2>
+      <p class="section-sub">Sign in and your dashboard shows the state of every document you own.</p>
+      <div class="d-glimpse" #glimpse [class.flat]="dashboardFlat()">
+        <div class="g-head">
+          <p class="g-title">Example dashboard <span class="pill-label">Sample data</span></p>
+          <label class="g-search" for="landing-search">
+            <span class="visually-hidden">Search sample documents</span>
+            <input
+              id="landing-search"
+              class="form-control"
+              type="search"
+              placeholder="Search documents… try “tesco”"
+              (input)="onSearch($event)"
+            />
+          </label>
+        </div>
+        <div class="filter-pills" role="group" aria-label="Filter sample documents by state">
+          @for (f of filters; track f) {
+            <button
+              class="pill-btn"
+              type="button"
+              [class.active]="filter() === f"
+              [attr.aria-pressed]="filter() === f"
+              (click)="setFilter(f)"
+            >{{ f === 'All' ? 'All documents' : f }}</button>
+          }
+        </div>
+        <dl class="stats-grid" aria-label="Example archive statistics">
+          <div class="stat"><dt>Total documents</dt><dd>128</dd></div>
+          <div class="stat"><dt>Ready</dt><dd>121</dd></div>
+          <div class="stat"><dt>Processing</dt><dd>4</dd></div>
+          <div class="stat"><dt>Awaiting OCR</dt><dd>3</dd></div>
+          <div class="stat"><dt>Members</dt><dd>2</dd></div>
+          <div class="stat"><dt>Archives</dt><dd>6</dd></div>
+        </dl>
+        <ul class="doc-list">
+          @for (doc of filteredDocs(); track doc.name) {
+            <li class="doc-row">
+              <span class="doc-name">{{ doc.name }}</span>
+              <span class="doc-kind">{{ doc.kind }} · {{ doc.date }}</span>
+              <span class="doc-amount">{{ doc.amount }}</span>
+              <span class="badge" [class.badge-success]="doc.state === 'Ready'" [class.badge-warning]="doc.state === 'Awaiting OCR'" [class.badge-info]="doc.state === 'Processing'">{{ doc.state }}</span>
+            </li>
+          } @empty {
+            <li class="doc-empty">No sample documents match “{{ query() }}”.</li>
+          }
+        </ul>
+        <p class="preview-caption">Example dashboard — your live dashboard shows your real documents.</p>
+      </div>
+      <p class="dashboard-cta">
+        <a class="btn btn-primary btn-large" routerLink="/register">Create your archive</a>
+      </p>
     </div>
   </section>
 
   <!-- Security -->
   <section class="section" id="security" aria-labelledby="security-heading">
-    <h2 id="security-heading">Built to be trusted with your paperwork</h2>
-    <ul class="security-list">
-      <li>
-        <h3>Your files stay yours</h3>
-        <p>Documents are processed on your own server. Nothing is sent to an outside AI service.</p>
-      </li>
-      <li>
-        <h3>Workspaces &amp; roles</h3>
-        <p>Separate workspaces for home and business, with roles that decide who can see, edit or manage each one.</p>
-      </li>
-      <li>
-        <h3>Full audit trail</h3>
-        <p>Every upload, view and change is recorded, so you can always see what happened to a document and when.</p>
-      </li>
-    </ul>
+    <div class="container">
+      <h2 id="security-heading">Built to be trusted with your paperwork</h2>
+      <p class="section-sub">Your documents stay yours — processed on your own server, never sent to an outside AI service.</p>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <h3>Your files stay yours</h3>
+            <p>Processed on your own server; nothing sent to an outside AI service.</p>
+          </article>
+        </div>
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <h3>Workspaces &amp; roles</h3>
+            <p>Separate home and business workspaces, with roles for everyone who needs access.</p>
+          </article>
+        </div>
+        <div class="col-md-4">
+          <article class="tilt-card">
+            <h3>Full audit trail</h3>
+            <p>Every upload, view and change recorded, so you can always see what happened.</p>
+          </article>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Final call to action -->
   <section class="cta-band" aria-labelledby="cta-heading">
-    <div class="cta">
+    <div class="container">
       <h2 id="cta-heading">Start filing in <span class="hero-accent">seconds.</span></h2>
       <p>Create an account, upload your first receipt, and never dig through a drawer again.</p>
       <p>
         <a class="btn btn-accent btn-large" routerLink="/register">Get started</a>
-        <a class="btn btn-ghost btn-large" routerLink="/login">Log in</a>
+        <a class="btn btn-outline-light btn-large" routerLink="/login">Log in</a>
       </p>
     </div>
   </section>
 </main>
 
-<footer class="landing-footer">
+<footer class="c-footer">
   <p>DocuArchive — Secure document digitisation &amp; archive management.</p>
 </footer>
