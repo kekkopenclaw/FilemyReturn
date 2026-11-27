@@ -53,15 +53,17 @@ export class ApiService {
   /**
    * Lists a workspace's documents. Optional `search` matches file name,
    * extracted vendor or the full OCR text (Phase 3 full-text search).
+   * Optional `needsReview` restricts to the human-review queue.
    */
   getDocuments(
     workspaceId: string,
     search?: string,
+    needsReview?: boolean,
   ): Observable<DocumentSummary[]> {
-    const query =
-      search && search.trim()
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : '';
+    const params = new URLSearchParams();
+    if (search && search.trim()) params.set('search', search.trim());
+    if (needsReview) params.set('needsReview', 'true');
+    const query = params.toString() ? `?${params.toString()}` : '';
     return this.http.get<DocumentSummary[]>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents${query}`,
     );
@@ -75,6 +77,22 @@ export class ApiService {
     return this.http.post<DocumentSummary>(
       `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/reprocess`,
       {},
+    );
+  }
+
+  /**
+   * Human review: confirms or corrects a document's category (Phase 3
+   * classification). Clears the review flag. `category` must be one of
+   * Receipt, Invoice, Contract, BankStatement, Letter, Other.
+   */
+  confirmCategory(
+    workspaceId: string,
+    documentId: string,
+    category: string,
+  ): Observable<DocumentSummary> {
+    return this.http.post<DocumentSummary>(
+      `${this.baseUrl}/workspaces/${workspaceId}/documents/${documentId}/confirm-category`,
+      { category },
     );
   }
 
