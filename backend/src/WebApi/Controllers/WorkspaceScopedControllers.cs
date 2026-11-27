@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using DocuArchive.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +77,20 @@ public class DocumentsController : ControllerBase
     {
         var (doc, stream) = await _documents.GetDownloadAsync(ControllerUser.Id(this), workspaceId, documentId, ct);
         return File(stream, doc.MimeType, doc.OriginalFileName);
+    }
+
+    /// <summary>In-browser preview (Phase 6 viewer, members only). Same bytes as download,
+    /// but served with <c>Content-Disposition: inline</c> so the browser renders PDFs and
+    /// images in place instead of saving them. 400 for types browsers cannot render inline.</summary>
+    [HttpGet("{documentId:guid}/preview")]
+    public async Task<IActionResult> Preview(Guid workspaceId, Guid documentId, CancellationToken ct)
+    {
+        var (doc, stream) = await _documents.GetPreviewAsync(ControllerUser.Id(this), workspaceId, documentId, ct);
+        Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("inline")
+        {
+            FileNameStar = doc.OriginalFileName
+        }.ToString();
+        return File(stream, doc.MimeType);
     }
 
     /// <summary>

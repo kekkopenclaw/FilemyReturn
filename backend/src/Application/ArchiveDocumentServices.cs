@@ -105,6 +105,25 @@ public class DocumentService
         return (ToDto(doc), stream);
     }
 
+    /// <summary>Mime types browsers can render inline (PDF + common images). TIFF/BMP are
+    /// accepted uploads but not reliably rendered inline, so they stay download-only.</summary>
+    public static readonly string[] ViewableMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"];
+
+    /// <summary>Opens a document for in-browser preview (Phase 6 viewer, members only).
+    /// Same workspace isolation and storage checks as download; 400 for types browsers
+    /// cannot render inline. Views are audited as <c>Document.Viewed</c> — viewing exposes
+    /// the content just as a download does.</summary>
+    public async Task<(DocumentDto Document, Stream Content)> GetPreviewAsync(string userId, Guid workspaceId, Guid documentId, CancellationToken ct = default)
+    {
+        await _access.RequireMembershipAsync(workspaceId, userId, ct);
+        var doc = await _documents.GetByIdAsync(workspaceId, documentId, ct) ?? throw new NotFoundException("Document not found.");
+        if (!ViewableMimeTypes.Contains(doc.MimeType, StringComparer.OrdinalIgnoreCase))
+            throw new ValidationException($"This file type ({doc.MimeType}) cannot be previewed in the browser. Use download instead.");
+        var stream = await _storage.OpenReadAsync(doc.StorageKey, ct) ?? throw new NotFoundException("Stored file not found.");
+        await _audit.LogAsync(userId, workspaceId, "Document.Viewed", "Document", doc.Id.ToString(), doc.OriginalFileName, ct);
+        return (ToDto(doc), stream);
+    }
+
     /// <summary>Upload history: every document uploaded to this workspace, newest first, with the uploader.</summary>
     public async Task<List<UploadHistoryDto>> ListUploadHistoryAsync(string userId, Guid workspaceId, CancellationToken ct = default)
     {
